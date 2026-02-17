@@ -65,6 +65,17 @@ export function handleResize(
   });
 
   observer.observe(container);
+
+  // Patch disconnect to also clear pending debounce timeout
+  const originalDisconnect = observer.disconnect.bind(observer);
+  observer.disconnect = () => {
+    if (resizeTimeout) {
+      clearTimeout(resizeTimeout);
+      resizeTimeout = null;
+    }
+    originalDisconnect();
+  };
+
   return observer;
 }
 

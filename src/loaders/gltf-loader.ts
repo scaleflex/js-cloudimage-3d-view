@@ -39,7 +39,7 @@ export class GLTFFormatLoader implements FormatLoader {
         },
         (event) => {
           if (event.total > 0 && onProgress) {
-            onProgress(event.loaded / event.total);
+            onProgress(Math.min(event.loaded / event.total, 1));
           }
         },
         (error) => {

@@ -9,11 +9,14 @@ export function captureScreenshot(
   const size = renderer.getSize(new Vector2());
 
   renderer.setSize(size.width * scale, size.height * scale, false);
-  renderer.render(scene, camera);
-  const dataUrl = renderer.domElement.toDataURL('image/png');
-  renderer.setSize(size.width, size.height, false);
-
-  return dataUrl;
+  try {
+    renderer.render(scene, camera);
+    return renderer.domElement.toDataURL('image/png');
+  } catch {
+    return '';
+  } finally {
+    renderer.setSize(size.width, size.height, false);
+  }
 }
 
 export function downloadScreenshot(dataUrl: string, filename = 'screenshot'): void {

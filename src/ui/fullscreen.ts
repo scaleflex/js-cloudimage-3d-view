@@ -53,10 +53,10 @@ export function createFullscreenButton(
 
   button.addEventListener('click', () => {
     if (isFs()) {
-      if (document.exitFullscreen) document.exitFullscreen();
+      if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
       else if ((document as any).webkitExitFullscreen) (document as any).webkitExitFullscreen();
     } else {
-      if (targetElement.requestFullscreen) targetElement.requestFullscreen();
+      if (targetElement.requestFullscreen) targetElement.requestFullscreen().catch(() => {});
       else if ((targetElement as any).webkitRequestFullscreen) (targetElement as any).webkitRequestFullscreen();
     }
   });
@@ -65,12 +65,12 @@ export function createFullscreenButton(
     button,
 
     enterFullscreen() {
-      if (targetElement.requestFullscreen) targetElement.requestFullscreen();
+      if (targetElement.requestFullscreen) targetElement.requestFullscreen().catch(() => {});
       else if ((targetElement as any).webkitRequestFullscreen) (targetElement as any).webkitRequestFullscreen();
     },
 
     exitFullscreen() {
-      if (document.exitFullscreen) document.exitFullscreen();
+      if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
       else if ((document as any).webkitExitFullscreen) (document as any).webkitExitFullscreen();
     },
 

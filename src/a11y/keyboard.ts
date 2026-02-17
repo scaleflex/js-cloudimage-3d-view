@@ -91,7 +91,10 @@ export class KeyboardHandler {
           }
           break;
         case 'Escape':
-          this.options.onToggleFullscreen?.();
+          // Escape should only exit fullscreen, not enter it
+          if (document.fullscreenElement || (document as any).webkitFullscreenElement) {
+            this.options.onToggleFullscreen?.();
+          }
           break;
       }
     };
@@ -119,14 +122,21 @@ export class KeyboardHandler {
   private zoom(direction: number): void {
     const factor = 0.9;
     const cameraDir = new Vector3().subVectors(this.controls.target, this.camera.position);
+    const currentDist = cameraDir.length();
 
-    if (direction > 0) {
-      // Zoom in
-      this.camera.position.addScaledVector(cameraDir, 1 - factor);
-    } else {
-      // Zoom out
-      this.camera.position.addScaledVector(cameraDir, 1 - 1 / factor);
-    }
+    const newDist = direction > 0
+      ? currentDist * factor   // Zoom in
+      : currentDist / factor;  // Zoom out
+
+    // Respect OrbitControls min/max distance
+    const minDist = this.controls.minDistance || 0;
+    const maxDist = this.controls.maxDistance || Infinity;
+    const clampedDist = Math.max(minDist, Math.min(maxDist, newDist));
+
+    if (clampedDist === currentDist) return;
+
+    cameraDir.normalize();
+    this.camera.position.copy(this.controls.target).addScaledVector(cameraDir, -clampedDist);
 
     this.controls.update();
   }

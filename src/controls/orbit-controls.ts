@@ -41,7 +41,7 @@ export function updateControlsConstraints(
   modelSphere: Sphere,
   config: CI3DViewConfig,
 ): void {
-  const radius = modelSphere.radius;
+  const radius = Math.max(modelSphere.radius, 0.01);
 
   controls.minDistance = config.zoomMin ?? radius * 1.2;
   controls.maxDistance = config.zoomMax ?? radius * 5;

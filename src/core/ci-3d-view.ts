@@ -10,6 +10,7 @@ import {
   AnimationAction,
   AnimationClip,
   Vector2,
+  Mesh,
 } from 'three';
 import type { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import type { CI3DViewConfig, CI3DViewInstance } from './types';
@@ -43,7 +44,7 @@ export class CI3DView implements CI3DViewInstance {
   private animationId: number | null = null;
   private resizeObserver: ResizeObserver | null = null;
   private lights: LightingRig | null = null;
-  private groundPlane: any = null;
+  private groundPlane: Mesh | null = null;
   private autoRotateController: AutoRotateController | null = null;
   private mixer: AnimationMixer | null = null;
   private currentAction: AnimationAction | null = null;
@@ -142,6 +143,7 @@ export class CI3DView implements CI3DViewInstance {
   }
 
   async loadModel(src: string, mtlSrc?: string): Promise<void> {
+    if (this.destroyed) return;
     // Dispose old model
     if (this.model) {
       this.disposeModel();
@@ -154,16 +156,19 @@ export class CI3DView implements CI3DViewInstance {
   }
 
   setCameraPosition(x: number, y: number, z: number): void {
+    if (this.destroyed) return;
     this.camera.position.set(x, y, z);
     this.controls.update();
   }
 
   setCameraTarget(x: number, y: number, z: number): void {
+    if (this.destroyed) return;
     this.controls.target.set(x, y, z);
     this.controls.update();
   }
 
   resetCamera(): void {
+    if (this.destroyed) return;
     this.cameraResetHandle?.cancel();
     this.cameraResetHandle = smoothCameraReset(
       this.camera,
@@ -188,7 +193,8 @@ export class CI3DView implements CI3DViewInstance {
   }
 
   screenshot(scale?: number): string {
-    const s = scale ?? this.config.screenshotScale ?? 2;
+    if (this.destroyed) return '';
+    const s = Math.max(0.1, Math.min(scale ?? this.config.screenshotScale ?? 2, 8));
     const size = this.renderer.getSize(new Vector2());
 
     this.renderer.setSize(size.width * s, size.height * s, false);
@@ -282,6 +288,7 @@ export class CI3DView implements CI3DViewInstance {
   }
 
   update(config: Partial<CI3DViewConfig>): void {
+    if (this.destroyed) return;
     const oldConfig = { ...this.config };
     this.config = mergeConfig({ ...this.config, ...config });
 
@@ -370,7 +377,7 @@ export class CI3DView implements CI3DViewInstance {
 
     // Reload model if src changed
     if (config.src !== undefined && config.src !== oldConfig.src) {
-      this.loadModel(config.src, config.mtlSrc);
+      this.loadModel(config.src, config.mtlSrc).catch(() => {});
     }
   }
 
@@ -397,7 +404,7 @@ export class CI3DView implements CI3DViewInstance {
     // Dispose animation
     if (this.mixer) {
       this.mixer.stopAllAction();
-      this.mixer.uncacheRoot(this.model!);
+      if (this.model) this.mixer.uncacheRoot(this.model);
     }
 
     // Dispose model
@@ -429,8 +436,9 @@ export class CI3DView implements CI3DViewInstance {
     this.detachWheelInterception();
     this.hideScrollHint();
 
-    // Remove fullscreen listener
+    // Remove fullscreen listeners
     document.removeEventListener('fullscreenchange', this.onFullscreenChange);
+    document.removeEventListener('webkitfullscreenchange', this.onFullscreenChange);
 
     // Remove DOM elements
     this.scrollHint?.remove();
@@ -469,7 +477,12 @@ export class CI3DView implements CI3DViewInstance {
     const spinner = createElement('div', 'ci-3d-loading-spinner');
     this.loadingText = createElement('div', 'ci-3d-loading-text');
     this.loadingText.textContent = 'Loading...';
-    const progressBar = createElement('div', 'ci-3d-progress-bar');
+    const progressBar = createElement('div', 'ci-3d-progress-bar', {
+      'role': 'progressbar',
+      'aria-valuemin': '0',
+      'aria-valuemax': '100',
+      'aria-valuenow': '0',
+    });
     this.progressBarFill = createElement('div', 'ci-3d-progress-bar-fill');
     progressBar.appendChild(this.progressBarFill);
     this.loadingOverlay.appendChild(spinner);
@@ -734,9 +747,7 @@ export class CI3DView implements CI3DViewInstance {
       if (this.clips.length > 0) {
         this.mixer = new AnimationMixer(this.model);
 
-        if (this.config.autoPlayAnimation) {
-          this.playAnimation(this.config.animation);
-        } else if (this.config.animation !== undefined) {
+        if (this.config.autoPlayAnimation || this.config.animation !== undefined) {
           this.playAnimation(this.config.animation);
         }
 
@@ -880,12 +891,13 @@ export class CI3DView implements CI3DViewInstance {
   }
 
   private updateProgress(progress: number): void {
-    const pct = Math.round(progress * 100);
+    const pct = Math.round(Math.min(Math.max(progress, 0), 1) * 100);
     if (this.loadingText) {
       this.loadingText.textContent = `Loading... ${pct}%`;
     }
     if (this.progressBarFill) {
       this.progressBarFill.style.width = `${pct}%`;
+      this.progressBarFill.parentElement?.setAttribute('aria-valuenow', String(pct));
     }
   }
 

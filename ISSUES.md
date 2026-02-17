@@ -6,148 +6,118 @@ Deep code review of the `js-cloudimage-3d-view` codebase. Issues organized by se
 
 ## Critical
 
-### 1. Race condition: concurrent `loadModel` calls can corrupt state
-**File:** `src/core/ci-3d-view.ts:133-143, 559-672`
+### ~~1. Race condition: concurrent `loadModel` calls can corrupt state~~
+**File:** `src/core/ci-3d-view.ts`
 
-`loadModel` is async and awaits network I/O. If called twice in quick succession (or `update()` with a new `src` while a load is in-flight), both proceed concurrently. The first to resolve sets up the model, the second overwrites it. `disposeModel()` only disposes whatever `this.model` is at that instant, resulting in duplicate models, orphaned Three.js objects, and corrupted state.
+~~Fixed: `loadGeneration` counter incremented on each load; stale results are detected and disposed.~~
 
-**Fix:** Implement a load cancellation token or generation counter. Discard stale results.
+### ~~2. DRACOLoader WebWorker never disposed — memory leak per load~~
+**File:** `src/loaders/gltf-loader.ts`
 
-### 2. DRACOLoader WebWorker never disposed — memory leak per load
-**File:** `src/loaders/gltf-loader.ts:17-21`
+~~Fixed: Shared singleton `DRACOLoader` instance reused across loads via `getSharedDRACOLoader()`.~~
 
-`DRACOLoader` spawns a Web Worker for decompression. A new instance is created inside every `load()` call and never disposed. Every GLTF load leaks a WebWorker.
+### ~~3. React hook race condition: instance null during async import~~
+**File:** `src/react/use-ci-3d-view.ts`
 
-**Fix:** Create a single `DRACOLoader` instance and reuse across loads, or call `draco.dispose()` after load completes.
-
-### 3. React hook race condition: instance null during async import
-**File:** `src/react/use-ci-3d-view.ts:17-21`
-
-`CI3DView` is dynamically imported (async). `instance.current` is only set after the import resolves, but is returned immediately. Any imperative method called before initialization silently no-ops (e.g., `loadModel` returns `Promise.resolve()` without loading anything).
-
-**Fix:** Expose a loading/ready state, or queue commands until the instance is initialized.
+~~Fixed: `ready` state exposed; `destroyed` flag prevents stale initialization; React ref methods gracefully no-op when instance is null.~~
 
 ---
 
 ## High
 
-### 4. OrbitControls leak on model reload
-**File:** `src/core/ci-3d-view.ts:608`
+### ~~4. OrbitControls leak on model reload~~
+**File:** `src/core/ci-3d-view.ts`
 
-When `loadModelInternal` completes, it creates a new `OrbitControls` instance without disposing the previous one. `OrbitControls` registers multiple DOM event listeners (pointerdown, wheel, keydown, etc.). Every model load leaks an entire set of event listeners.
+~~Fixed: Controls are created once in `setupThreeJS()` and reused via `updateControlsConstraints()` — never recreated on model reload.~~
 
-**Fix:** Call `this.controls.dispose()` before reassigning, or reconfigure the existing instance instead of recreating.
+### ~~5. AutoRotateController holds stale controls reference after recreation~~
+**File:** `src/core/ci-3d-view.ts`
 
-### 5. AutoRotateController holds stale controls reference after recreation
-**File:** `src/core/ci-3d-view.ts:608, 166-175`
+~~Fixed: Controls are no longer recreated (see #4), so the reference stays valid.~~
 
-Related to #4: `AutoRotateController` holds a reference to the old `OrbitControls` and has event listeners on it. After controls are recreated, auto-rotate manipulates the stale (leaked) controls object.
+### ~~6. Auto-rotate resumes after interaction even when explicitly stopped~~
+**File:** `src/controls/auto-rotate.ts`
 
-**Fix:** Destroy and recreate the `AutoRotateController` when controls are recreated, or stop recreating controls.
+~~Fixed: `enabled` flag added. `stop()` sets it to `false`, checked in `onInteractEnd` before scheduling resume.~~
 
-### 6. Auto-rotate resumes after interaction even when explicitly stopped
-**File:** `src/controls/auto-rotate.ts:47-51`
+### ~~7. `reduceLightingForIBL` is not idempotent — repeated calls keep halving intensity~~
+**File:** `src/lighting/lighting.ts`
 
-`onInteractEnd` always schedules auto-rotate resumption. If a user calls `stop()` to explicitly disable auto-rotate, then interacts with the model, auto-rotate will resume after the delay.
+~~Fixed: Uses `originalIntensities` stored at creation time — always multiplies from original values, not current.~~
 
-**Fix:** Add an `enabled` flag. `stop()` sets it to `false`, `start()` sets it to `true`. Check it in `onInteractEnd` before scheduling resume.
+### ~~8. Double-dispose of same texture when `background === environment`~~
+**File:** `src/lighting/environment.ts`
 
-### 7. `reduceLightingForIBL` is not idempotent — repeated calls keep halving intensity
-**File:** `src/lighting/lighting.ts:99-104`
+~~Fixed: `sameTexture` check prevents disposing the background texture when it's the same object as environment.~~
 
-`intensity *= 0.5` is called each time. If the environment map is reloaded (e.g., via `update()`), intensities are halved again, eventually approaching zero.
+### ~~9. No cancellation for `smoothCameraReset` animation~~
+**File:** `src/controls/camera-reset.ts`
 
-**Fix:** Store original intensities and use absolute reduced values, or guard against repeated calls.
+~~Fixed: Returns `CameraResetHandle` with `cancel()`. Previous reset is cancelled before starting a new one.~~
 
-### 8. Double-dispose of same texture when `background === environment`
-**File:** `src/lighting/environment.ts:47-56`
+### ~~10. Unhandled Promise rejections from fullscreen API~~
+**File:** `src/ui/fullscreen.ts`, `src/core/ci-3d-view.ts`
 
-Both `scene.environment` and `scene.background` point to the same texture object when `showBackground` is true. `disposeEnvironment` disposes the texture twice.
+~~Fixed: `.catch(() => {})` added to all `requestFullscreen()` and `exitFullscreen()` calls.~~
 
-**Fix:** Check `scene.background === scene.environment` before disposing the second time.
+### ~~11. `captureScreenshot` does not restore renderer state on error~~
+**File:** `src/ui/screenshot.ts`, `src/core/ci-3d-view.ts`
 
-### 9. No cancellation for `smoothCameraReset` animation
-**File:** `src/controls/camera-reset.ts:27-45`
+~~Fixed: Wrapped in `try/catch/finally` — renderer size always restored in `finally` block.~~
 
-The reset animation uses `requestAnimationFrame` with no cancel mechanism. Multiple concurrent resets fight over camera position. If `destroy()` is called mid-animation, the rAF callback continues running on disposed objects.
+### ~~12. `toDataURL()` throws on tainted canvases with no error handling~~
+**File:** `src/ui/screenshot.ts`, `src/core/ci-3d-view.ts`
 
-**Fix:** Return a cancel handle. Store and cancel any in-flight reset on destroy.
+~~Fixed: `catch` block catches `SecurityError` and returns empty string.~~
 
-### 10. Unhandled Promise rejections from fullscreen API
-**File:** `src/ui/fullscreen.ts:56-60, 68-69, 73-74`
+### ~~13. `emit()` handler throw stops all subsequent handlers~~
+**File:** `src/utils/events.ts`
 
-`requestFullscreen()` and `exitFullscreen()` return Promises that can reject. None have `.catch()` handlers.
+~~Fixed: Each handler invocation wrapped in `try/catch` with `console.error`.~~
 
-**Fix:** Add `.catch()` to all fullscreen API calls.
+### ~~14. Set mutation during iteration in `once()` — re-entrant emit risk~~
+**File:** `src/utils/events.ts`
 
-### 11. `captureScreenshot` does not restore renderer state on error
-**File:** `src/ui/screenshot.ts:8-16`
-
-If `renderer.render()` or `toDataURL()` throws, the renderer size is left in the upscaled state.
-
-**Fix:** Wrap in try/finally to always restore `renderer.setSize()`.
-
-### 12. `toDataURL()` throws on tainted canvases with no error handling
-**File:** `src/ui/screenshot.ts:13`
-
-Cross-origin textures without CORS headers cause `SecurityError` on `toDataURL()`. No catch block exists.
-
-**Fix:** Catch `SecurityError` and return empty string or descriptive error.
-
-### 13. `emit()` handler throw stops all subsequent handlers
-**File:** `src/utils/events.ts:18-20`
-
-If any event handler throws, `forEach` stops and remaining handlers are never called.
-
-**Fix:** Wrap each handler invocation in try/catch.
-
-### 14. Set mutation during iteration in `once()` — re-entrant emit risk
-**File:** `src/utils/events.ts:23-29`
-
-The `once` wrapper calls `this.off()` during `forEach` iteration. Fragile with re-entrant emission.
-
-**Fix:** Collect handlers to remove after iteration, or use a copy of the set.
+~~Fixed: Uses `[...handlers]` spread to iterate a copy of the set.~~
 
 ---
 
 ## Medium
 
-### 15. `webkitfullscreenchange` listener never removed on destroy
-**File:** `src/core/ci-3d-view.ts:387, 488`
+### ~~15. `webkitfullscreenchange` listener never removed on destroy~~
+**File:** `src/core/ci-3d-view.ts`
 
-Two listeners registered (`fullscreenchange` + `webkitfullscreenchange`), but only `fullscreenchange` is removed in `destroy()`.
+~~Fixed: Both `fullscreenchange` and `webkitfullscreenchange` listeners removed in `destroy()`.~~
 
-### 16. `mixer.uncacheRoot(this.model!)` when model may be null
-**File:** `src/core/ci-3d-view.ts:358`
+### ~~16. `mixer.uncacheRoot(this.model!)` when model may be null~~
+**File:** `src/core/ci-3d-view.ts`
 
-Non-null assertion `!` used, but `this.model` can be null if load never completed.
+~~Fixed: Added `if (this.model)` guard before `mixer.uncacheRoot()`.~~
 
-### 17. Unhandled promise rejection in `update()` when loading new src
-**File:** `src/core/ci-3d-view.ts:337-339`
+### ~~17. Unhandled promise rejection in `update()` when loading new src~~
+**File:** `src/core/ci-3d-view.ts`
 
-`this.loadModel()` promise is not awaited and has no `.catch()`.
+~~Fixed: Added `.catch(() => {})` to `this.loadModel()` call in `update()`.~~
 
-### 18. Resize observer timeout fires after destroy
-**File:** `src/core/renderer.ts:52-68`
+### ~~18. Resize observer timeout fires after destroy~~
+**File:** `src/core/renderer.ts`
 
-When `observer.disconnect()` is called, a pending debounce timeout may still fire on a disposed renderer.
+~~Fixed: Patched `observer.disconnect()` to also clear the pending debounce timeout.~~
 
 ### 19. No WebGL context loss handling
 **File:** `src/core/renderer.ts:23-45`
 
 No `webglcontextlost`/`webglcontextrestored` listeners. If context is lost, the viewer becomes a black rectangle with no feedback.
 
-### 20. No post-destroy guards on public methods
-**File:** `src/core/ci-3d-view.ts` (all public methods)
+### ~~20. No post-destroy guards on public methods~~
+**File:** `src/core/ci-3d-view.ts`
 
-After `destroy()`, calling `setCameraPosition`, `loadModel`, `screenshot`, etc. will use disposed Three.js objects. Only `destroy()` itself checks the `destroyed` flag.
+~~Fixed: Added `if (this.destroyed) return` guards on `loadModel`, `setCameraPosition`, `setCameraTarget`, `resetCamera`, `screenshot`, and `update`.~~
 
-### 21. `scaleToFit` uses `multiplyScalar` — compounds on repeated calls
-**File:** `src/utils/math.ts:54`
+### ~~21. `scaleToFit` uses `multiplyScalar` — compounds on repeated calls~~
+**File:** `src/utils/math.ts`
 
-`model.scale.multiplyScalar(scale)` multiplies the existing scale. If called multiple times (e.g., model reload), scale compounds.
-
-**Fix:** Use `model.scale.setScalar(scale)` for absolute scaling.
+~~Fixed: Uses `model.scale.set(scale, scale, scale)` for absolute scaling.~~
 
 ### 22. `fitCameraToModel` ignores aspect ratio
 **File:** `src/utils/math.ts:64`
@@ -159,17 +129,15 @@ Uses only vertical FOV. For wide models in tall viewports (aspect < 1), the mode
 
 For `SkinnedMesh`, the base geometry bounding box doesn't account for bone transformations. The computed box represents the bind pose, not the current animated pose.
 
-### 24. `disposeObject3D` only handles `isMesh` — misses Lines, Points, Sprites
-**File:** `src/utils/dispose.ts:5`
+### ~~24. `disposeObject3D` only handles `isMesh` — misses Lines, Points, Sprites~~
+**File:** `src/utils/dispose.ts`
 
-`Line`, `LineSegments`, `Points`, and `Sprite` objects also have `geometry` and `material` that need disposal.
+~~Fixed: Now checks for `geometry` and `material` properties directly, handling all Object3D subtypes (Mesh, Line, LineSegments, Points, Sprite).~~
 
-### 25. Shared materials/textures disposed multiple times
-**File:** `src/utils/dispose.ts:12-21`
+### ~~25. Shared materials/textures disposed multiple times~~
+**File:** `src/utils/dispose.ts`
 
-Multiple meshes sharing the same material or texture cause repeated `.dispose()` calls.
-
-**Fix:** Use a `Set` to track already-disposed resources.
+~~Fixed: Uses `Set<Material>` and `Set<Texture>` to track already-disposed resources.~~
 
 ### 26. `once()` prevents `off()` from removing handler before event fires
 **File:** `src/utils/events.ts:23-29`
@@ -186,47 +154,45 @@ The `once` wrapper replaces the original handler. `off(event, originalHandler)` 
 
 When `MeshPhongMaterial.dispose()` is called, the shared `map` texture transferred to `MeshStandardMaterial` may also be disposed. Multi-material arrays are not handled.
 
-### 29. Environment map URL format detection fragile with query strings
-**File:** `src/lighting/environment.ts:16`
+### ~~29. Environment map URL format detection fragile with query strings~~
+**File:** `src/lighting/environment.ts`
 
-`url.toLowerCase().endsWith('.exr')` doesn't strip query strings. URL like `env.exr?v=123` won't be detected as EXR.
+~~Fixed: URL is stripped of query string and hash before checking `.exr` extension.~~
 
 ### 30. Shadow camera frustum hardcoded — doesn't adapt to model size
 **File:** `src/lighting/lighting.ts:66-75`
 
 Fixed [-10, 10] frustum with far=50. Very small or very large models get incorrect shadow rendering.
 
-### 31. Progress callbacks can report values > 1.0
-**File:** All loaders (`gltf-loader.ts:30`, `obj-loader.ts:57`, `stl-loader.ts:34`, `fbx-loader.ts:20`)
+### ~~31. Progress callbacks can report values > 1.0~~
+**File:** All loaders
 
-With gzip/brotli compression, `event.loaded` (decompressed) can exceed `event.total` (compressed Content-Length).
+~~Fixed: All loaders now clamp progress with `Math.min(event.loaded / event.total, 1)`.~~
 
-**Fix:** Clamp with `Math.min(event.loaded / event.total, 1)`.
+### ~~32. Loading overlay progress not clamped~~
+**File:** `src/core/ci-3d-view.ts`
 
-### 32. Loading overlay progress not clamped
-**File:** `src/ui/loading.ts:29`
+~~Fixed: `updateProgress()` now clamps input to [0, 1] range.~~
 
-`updateProgress(progress)` doesn't clamp input. Values > 1 or < 0 produce "Loading... 150%" or negative widths.
+### ~~33. Progress bar missing ARIA attributes~~
+**File:** `src/core/ci-3d-view.ts`
 
-### 33. Progress bar missing ARIA attributes
-**File:** `src/ui/loading.ts:16-17`
-
-No `role="progressbar"`, `aria-valuenow`, `aria-valuemin`, or `aria-valuemax`. Screen readers can't convey progress.
+~~Fixed: Added `role="progressbar"`, `aria-valuemin`, `aria-valuemax`, `aria-valuenow` attributes. `aria-valuenow` updated on each progress change.~~
 
 ### 34. Error overlay `retryBtn.focus()` steals focus unconditionally
 **File:** `src/ui/error.ts:45`
 
 Focus is stolen even if the user is interacting elsewhere. Disorienting for screen reader users.
 
-### 35. Escape key toggles fullscreen instead of only exiting
-**File:** `src/a11y/keyboard.ts:93-95`
+### ~~35. Escape key toggles fullscreen instead of only exiting~~
+**File:** `src/a11y/keyboard.ts`
 
-Pressing Escape calls `onToggleFullscreen()` — could enter fullscreen if not already in it. Should only exit.
+~~Fixed: Escape now only calls `onToggleFullscreen()` when already in fullscreen mode.~~
 
-### 36. Keyboard zoom bypasses OrbitControls min/max distance
-**File:** `src/a11y/keyboard.ts:119-132`
+### ~~36. Keyboard zoom bypasses OrbitControls min/max distance~~
+**File:** `src/a11y/keyboard.ts`
 
-Direct camera position manipulation ignores `controls.minDistance` and `controls.maxDistance`. Camera can go inside or behind the model.
+~~Fixed: Keyboard zoom now computes new distance and clamps it to `controls.minDistance` / `controls.maxDistance`.~~
 
 ### 37. `role="application"` without keyboard instructions
 **File:** `src/a11y/aria.ts:1-8`
@@ -238,40 +204,40 @@ Screen reader navigation shortcuts are disabled inside `role="application"`. No 
 
 No way to distinguish "not ready" from "screenshot failed". Consider returning `null` or exposing a ready state.
 
-### 39. React `destroy()` on ref can cause double-destroy
+### ~~39. React `destroy()` on ref can cause double-destroy~~
 **File:** `src/react/ci-3d-viewer.tsx:29`
 
-`destroy()` is exposed on the ref, but `useCI3DView` also calls it in cleanup. Manual + automatic destroy = double call.
+~~Fixed: `destroyed` flag in `CI3DView.destroy()` prevents double-dispose.~~
 
 ### 40. React hook only re-inits on `src` change
 **File:** `src/react/use-ci-3d-view.ts:30`
 
 Changes to other props (`autoRotate`, `theme`, callbacks) don't trigger re-initialization. Options baked into the constructor won't update.
 
-### 41. `autoPlayAnimation` vs `animation` logic is identical
-**File:** `src/core/ci-3d-view.ts:650-654`
+### ~~41. `autoPlayAnimation` vs `animation` logic is identical~~
+**File:** `src/core/ci-3d-view.ts`
 
-Both branches do `this.playAnimation(this.config.animation)`. `autoPlayAnimation` has no distinct behavior.
+~~Fixed: Consolidated into a single condition: `if (autoPlayAnimation || animation !== undefined)`.~~
 
-### 42. `.usdz` in known extensions but no loader supports it
-**File:** `src/loaders/loader-registry.ts:28`
+### ~~42. `.usdz` in known extensions but no loader supports it~~
+**File:** `src/loaders/loader-registry.ts`
 
-Misleading — suggests support that doesn't exist. `getLoader` returns null for `.usdz`.
+~~Fixed: `.usdz` removed from `knownExtensions` after USDZ support rollback.~~
 
 ### 43. `throttle` return type cast is unsound
 **File:** `src/utils/events.ts:68`
 
 Cast to `T` loses return type. Throttled function always returns `undefined`.
 
-### 44. Old environment not disposed before overwriting with new one
-**File:** `src/lighting/environment.ts:31-33`
+### ~~44. Old environment not disposed before overwriting with new one~~
+**File:** `src/lighting/environment.ts`
 
-Setting a new environment map overwrites the previous one without disposing it — GPU texture leak.
+~~Fixed: `disposeEnvironment(scene)` called at the start of `loadEnvironmentMap()` before loading new texture.~~
 
-### 45. `screenshot()` scale parameter not validated
-**File:** `src/ui/screenshot.ts:7`
+### ~~45. `screenshot()` scale parameter not validated~~
+**File:** `src/core/ci-3d-view.ts`
 
-Values of 0, negative, or very large numbers could cause WebGL errors or crash the browser.
+~~Fixed: Scale clamped to [0.1, 8] range.~~
 
 ### 46. `AnimationMixerWrapper.play()` after dispose() will crash
 **File:** `src/animation/animation-mixer.ts:13-33, 72-75`
@@ -293,20 +259,24 @@ Types say `screenshot()` returns `string`, but implementation returns `''` when 
 
 No validation that `polarAngleMin <= polarAngleMax` or `zoomMin <= zoomMax`. Invalid ranges produce broken OrbitControls behavior.
 
-### 50. `updateControlsConstraints` with radius=0 locks zoom
-**File:** `src/controls/orbit-controls.ts:44-47`
+### ~~50. `updateControlsConstraints` with radius=0 locks zoom~~
+**File:** `src/controls/orbit-controls.ts`
 
-If bounding sphere radius is 0, `minDistance` and `maxDistance` both become 0, disabling zoom entirely.
+~~Fixed: Radius clamped to minimum of 0.01.~~
 
 ---
 
 ## Low
 
-### 51. `groundPlane` typed as `any`
-**File:** `src/core/ci-3d-view.ts:45`
+### ~~51. `groundPlane` typed as `any`~~
+**File:** `src/core/ci-3d-view.ts`
 
-### 52. `LoadResult.animations` typed as `any[]`
-**File:** `src/core/types.ts:112` — should be `AnimationClip[]`
+~~Fixed: Typed as `Mesh | null`.~~
+
+### ~~52. `LoadResult.animations` typed as `any[]`~~
+**File:** `src/core/types.ts`
+
+~~Fixed: Typed as `AnimationClip[]`.~~
 
 ### 53. `CI3DViewInstance.controls` typed as `any`
 **File:** `src/core/types.ts:77` — should be `OrbitControls`
@@ -326,14 +296,18 @@ If bounding sphere radius is 0, `minDistance` and `maxDistance` both become 0, d
 ### 58. `validateConfig` doesn't validate numeric ranges
 **File:** `src/core/config.ts:123-139` — no checks for negative values, out-of-range angles, etc.
 
-### 59. Camera `near`/`far` planes not dynamically adjusted
-**File:** `src/core/scene.ts:16` — hardcoded `near=0.01, far=1000`, wastes z-buffer precision
+### ~~59. Camera `near`/`far` planes not dynamically adjusted~~
+**File:** `src/core/scene.ts`, `src/utils/math.ts`
+
+~~Fixed: `fitCameraToModel()` dynamically sets `near` and `far` based on the computed distance to the model.~~
 
 ### 60. `detectFormat` and `hasFileExtension` duplicate URL parsing logic
 **File:** `src/loaders/loader-registry.ts:14-30, 49-54`
 
-### 61. Unused `SkinnedMesh` import
-**File:** `src/utils/math.ts:7`
+### ~~61. Unused `SkinnedMesh` import~~
+**File:** `src/utils/math.ts`
+
+~~Fixed: Import was already removed.~~
 
 ### 62. `any` type in `computeBoundingBox` traverse callback
 **File:** `src/utils/math.ts:17`
@@ -366,10 +340,10 @@ If bounding sphere radius is 0, `minDistance` and `maxDistance` both become 0, d
 
 ## Summary
 
-| Severity | Count |
-|----------|-------|
-| Critical | 3 |
-| High | 11 |
-| Medium | 36 |
-| Low | 20 |
-| **Total** | **70** |
+| Severity | Count | Fixed |
+|----------|-------|-------|
+| Critical | 3 | 3 |
+| High | 11 | 11 |
+| Medium | 36 | 24 |
+| Low | 20 | 4 |
+| **Total** | **70** | **42** |

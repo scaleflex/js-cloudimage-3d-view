@@ -13,7 +13,8 @@ export async function loadEnvironmentMap(
   const pmrem = new PMREMGenerator(renderer);
   pmrem.compileEquirectangularShader();
 
-  const isExr = url.toLowerCase().endsWith('.exr');
+  const cleanUrl = url.split('?')[0].split('#')[0];
+  const isExr = cleanUrl.toLowerCase().endsWith('.exr');
 
   let loader: any;
   if (isExr) {
@@ -23,6 +24,9 @@ export async function loadEnvironmentMap(
     const { RGBELoader } = await import('three/addons/loaders/RGBELoader.js');
     loader = new RGBELoader();
   }
+
+  // Dispose existing environment before loading new one
+  disposeEnvironment(scene);
 
   return new Promise((resolve, reject) => {
     loader.load(

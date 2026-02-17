@@ -1,4 +1,4 @@
-import type { Group, Scene, PerspectiveCamera, WebGLRenderer } from 'three';
+import type { Group, Scene, PerspectiveCamera, WebGLRenderer, AnimationClip } from 'three';
 
 export type ToneMappingMode = 'none' | 'linear' | 'reinhard' | 'aces' | 'filmic';
 
@@ -114,7 +114,7 @@ export interface LoaderOptions {
 
 export interface LoadResult {
   model: Group;
-  animations: any[];
+  animations: AnimationClip[];
 }
 
 export interface FormatLoader {
