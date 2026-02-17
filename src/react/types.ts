@@ -60,6 +60,10 @@ export interface CI3DViewerProps {
   style?: CSSProperties;
 }
 
+/**
+ * Methods return defaults (empty string, empty array, false, etc.) when the instance
+ * is not yet initialized. Use the `ready` state from `useCI3DView` to check readiness.
+ */
 export interface CI3DViewerRef {
   loadModel(src: string, mtlSrc?: string): Promise<void>;
   setCameraPosition(x: number, y: number, z: number): void;

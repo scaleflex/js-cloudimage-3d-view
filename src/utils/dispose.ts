@@ -4,16 +4,18 @@ export function disposeObject3D(object: Object3D): void {
   const disposedMaterials = new Set<Material>();
   const disposedTextures = new Set<Texture>();
 
-  object.traverse((child: any) => {
+  object.traverse((child) => {
     // Handle Mesh, Line, LineSegments, Points, Sprite
-    if (child.geometry) {
-      child.geometry.dispose();
+    const meshLike = child as Object3D & { geometry?: { dispose(): void }; material?: Material | Material[] };
+
+    if (meshLike.geometry) {
+      meshLike.geometry.dispose();
     }
 
-    if (child.material) {
-      const materials: Material[] = Array.isArray(child.material)
-        ? child.material
-        : [child.material];
+    if (meshLike.material) {
+      const materials: Material[] = Array.isArray(meshLike.material)
+        ? meshLike.material
+        : [meshLike.material];
 
       for (const mat of materials) {
         if (!mat || disposedMaterials.has(mat)) continue;

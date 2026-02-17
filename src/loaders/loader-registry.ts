@@ -15,13 +15,14 @@ const loaders: FormatLoader[] = [
   new AMFFormatLoader(),
 ];
 
-export function detectFormat(url: string): string {
-  // Strip query string and hash
+function extractFilename(url: string): string {
   const cleanUrl = url.split('?')[0].split('#')[0];
-
-  // Extract just the pathname/filename (after the last /)
   const lastSlash = cleanUrl.lastIndexOf('/');
-  const filename = lastSlash !== -1 ? cleanUrl.substring(lastSlash + 1) : cleanUrl;
+  return lastSlash !== -1 ? cleanUrl.substring(lastSlash + 1) : cleanUrl;
+}
+
+export function detectFormat(url: string): string {
+  const filename = extractFilename(url);
 
   const lastDot = filename.lastIndexOf('.');
   if (lastDot === -1) return '';
@@ -43,20 +44,19 @@ export function getLoader(url: string): FormatLoader | null {
   }
 
   // Default to GLTF for extensionless URLs (e.g. CDN hashed paths)
-  if (!ext && !hasFileExtension(url)) {
+  if (!ext && !extractFilename(url).includes('.')) {
     return loaders[0]; // GLTFFormatLoader
   }
 
   return null;
 }
 
-function hasFileExtension(url: string): boolean {
-  const cleanUrl = url.split('?')[0].split('#')[0];
-  const lastSlash = cleanUrl.lastIndexOf('/');
-  const filename = lastSlash !== -1 ? cleanUrl.substring(lastSlash + 1) : cleanUrl;
-  return filename.includes('.');
-}
-
 export function registerLoader(loader: FormatLoader): void {
-  loaders.push(loader);
+  // Deduplicate: skip if a loader for the same extensions already exists
+  const isDuplicate = loaders.some((existing) =>
+    existing.extensions.some((ext) => loader.extensions.includes(ext)),
+  );
+  if (!isDuplicate) {
+    loaders.push(loader);
+  }
 }

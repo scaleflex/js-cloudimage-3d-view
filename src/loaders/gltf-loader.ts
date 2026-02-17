@@ -9,6 +9,8 @@ let sharedDracoPath: string | null = null;
 
 function getSharedDRACOLoader(decoderPath: string): DRACOLoader {
   if (!sharedDraco || sharedDracoPath !== decoderPath) {
+    // Dispose old loader's workers before creating a new one
+    sharedDraco?.dispose();
     sharedDraco = new DRACOLoader();
     sharedDraco.setDecoderPath(decoderPath);
     sharedDracoPath = decoderPath;

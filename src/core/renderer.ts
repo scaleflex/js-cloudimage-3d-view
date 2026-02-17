@@ -37,11 +37,30 @@ export function createRenderer(canvas: HTMLCanvasElement, config: CI3DViewConfig
     renderer.shadowMap.type = PCFSoftShadowMap;
   }
 
-  const toneMapping = config.toneMapping ?? 'aces';
-  renderer.toneMapping = TONE_MAPPING_MAP[toneMapping] ?? ACESFilmicToneMapping;
-  renderer.toneMappingExposure = config.toneMappingExposure ?? 1.0;
+  applyToneMapping(renderer, config);
+
+  // Handle WebGL context loss
+  canvas.addEventListener('webglcontextlost', (e) => {
+    e.preventDefault();
+  });
+  canvas.addEventListener('webglcontextrestored', () => {
+    // Re-read config at restore time to use current values, not stale closure
+    renderer.setPixelRatio(Math.min(dpr, config.pixelRatio ?? 2));
+    renderer.outputColorSpace = SRGBColorSpace;
+    if (config.shadows) {
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = PCFSoftShadowMap;
+    }
+    applyToneMapping(renderer, config);
+  });
 
   return renderer;
+}
+
+function applyToneMapping(renderer: WebGLRenderer, config: CI3DViewConfig): void {
+  const mode = config.toneMapping ?? 'aces';
+  renderer.toneMapping = TONE_MAPPING_MAP[mode] ?? ACESFilmicToneMapping;
+  renderer.toneMappingExposure = config.toneMappingExposure ?? 1.0;
 }
 
 export function handleResize(

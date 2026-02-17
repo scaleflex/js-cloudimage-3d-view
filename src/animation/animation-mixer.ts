@@ -4,6 +4,8 @@ export class AnimationMixerWrapper {
   private mixer: AnimationMixer;
   private clips: AnimationClip[];
   private currentAction: AnimationAction | null = null;
+  private disposed = false;
+  private speed = 1;
 
   constructor(model: Object3D, clips: AnimationClip[]) {
     this.mixer = new AnimationMixer(model);
@@ -11,7 +13,7 @@ export class AnimationMixerWrapper {
   }
 
   play(indexOrName?: number | string): void {
-    if (this.clips.length === 0) return;
+    if (this.disposed || this.clips.length === 0) return;
 
     let clip: AnimationClip | undefined;
     if (typeof indexOrName === 'number') {
@@ -29,22 +31,26 @@ export class AnimationMixerWrapper {
     }
 
     this.currentAction = this.mixer.clipAction(clip);
+    this.currentAction.timeScale = this.speed;
     this.currentAction.reset().play();
   }
 
   pause(): void {
+    if (this.disposed) return;
     if (this.currentAction) {
       this.currentAction.paused = true;
     }
   }
 
   resume(): void {
+    if (this.disposed) return;
     if (this.currentAction) {
       this.currentAction.paused = false;
     }
   }
 
   stop(): void {
+    if (this.disposed) return;
     if (this.currentAction) {
       this.currentAction.stop();
       this.currentAction = null;
@@ -52,6 +58,8 @@ export class AnimationMixerWrapper {
   }
 
   setSpeed(speed: number): void {
+    if (this.disposed) return;
+    this.speed = speed;
     if (this.currentAction) {
       this.currentAction.timeScale = speed;
     }
@@ -62,6 +70,7 @@ export class AnimationMixerWrapper {
   }
 
   update(delta: number): void {
+    if (this.disposed) return;
     this.mixer.update(delta);
   }
 
@@ -70,6 +79,8 @@ export class AnimationMixerWrapper {
   }
 
   dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
     this.mixer.stopAllAction();
     this.mixer.uncacheRoot(this.mixer.getRoot());
   }

@@ -12,7 +12,7 @@ export function createGroundPlane(
   config: { shadowOpacity: number },
 ): Mesh {
   const size = box.getSize(new Vector3());
-  const diameter = Math.max(size.x, size.z) * 3;
+  const diameter = Math.max(size.x, size.y, size.z) * 3;
 
   const geometry = new PlaneGeometry(diameter, diameter);
   const material = new ShadowMaterial({ opacity: config.shadowOpacity });

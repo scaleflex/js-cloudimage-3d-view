@@ -3,10 +3,6 @@ import { MTLLoader } from 'three/addons/loaders/MTLLoader.js';
 import { MeshStandardMaterial } from 'three';
 import type { FormatLoader, LoadResult, LoaderOptions } from '../core/types';
 
-function inferMtlUrl(objUrl: string): string {
-  return objUrl.replace(/\.obj(\?.*)?$/i, '.mtl$1');
-}
-
 export class OBJFormatLoader implements FormatLoader {
   extensions = ['.obj'];
 
@@ -37,17 +33,23 @@ export class OBJFormatLoader implements FormatLoader {
           // Upgrade MeshPhongMaterial to MeshStandardMaterial
           group.traverse((child: any) => {
             if (child.isMesh && child.material) {
-              const mat = child.material;
-              if (mat.type === 'MeshPhongMaterial') {
-                const standard = new MeshStandardMaterial({
-                  color: mat.color,
-                  map: mat.map,
-                  roughness: 0.7,
-                  metalness: 0.0,
-                });
-                child.material = standard;
-                mat.dispose();
-              }
+              const mats = Array.isArray(child.material) ? child.material : [child.material];
+              const upgraded = mats.map((mat: any) => {
+                if (mat.type === 'MeshPhongMaterial') {
+                  const standard = new MeshStandardMaterial({
+                    color: mat.color,
+                    map: mat.map,
+                    roughness: 0.7,
+                    metalness: 0.0,
+                  });
+                  // Null out map before dispose to prevent shared texture disposal
+                  mat.map = null;
+                  mat.dispose();
+                  return standard;
+                }
+                return mat;
+              });
+              child.material = Array.isArray(child.material) ? upgraded : upgraded[0];
             }
           });
 
@@ -65,7 +67,7 @@ export class OBJFormatLoader implements FormatLoader {
     });
   }
 
-  private loadMtl(url: string): Promise<any> {
+  private loadMtl(url: string): Promise<InstanceType<typeof MTLLoader.MaterialCreator>> {
     const loader = new MTLLoader();
     return new Promise((resolve, reject) => {
       loader.load(url, resolve, undefined, reject);

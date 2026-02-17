@@ -33,5 +33,27 @@ export function useCI3DView(options: UseCI3DViewOptions): UseCI3DViewReturn {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [options.src]);
 
+  // Forward prop changes to instance.update() without full re-init
+  useEffect(() => {
+    if (!instance.current) return;
+
+    const { src, className, style, ...updatableProps } = optionsRef.current as any;
+    instance.current.update(updatableProps);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    options.autoRotate,
+    options.autoRotateSpeed,
+    options.theme,
+    options.background,
+    options.shadows,
+    options.toneMapping,
+    options.toneMappingExposure,
+    options.damping,
+    options.dampingFactor,
+    options.zoom,
+    options.pan,
+    options.controls,
+  ]);
+
   return { containerRef, instance, ready };
 }

@@ -2,6 +2,7 @@ type EventHandler = (...args: any[]) => void;
 
 export class EventEmitter {
   private listeners = new Map<string, Set<EventHandler>>();
+  private onceMap = new Map<EventHandler, EventHandler>();
 
   on(event: string, handler: EventHandler): void {
     if (!this.listeners.has(event)) {
@@ -11,7 +12,14 @@ export class EventEmitter {
   }
 
   off(event: string, handler: EventHandler): void {
-    this.listeners.get(event)?.delete(handler);
+    // Support removing a once() handler by its original reference
+    const wrapper = this.onceMap.get(handler);
+    if (wrapper) {
+      this.listeners.get(event)?.delete(wrapper);
+      this.onceMap.delete(handler);
+    } else {
+      this.listeners.get(event)?.delete(handler);
+    }
   }
 
   emit(event: string, ...args: any[]): void {
@@ -29,13 +37,16 @@ export class EventEmitter {
   once(event: string, handler: EventHandler): void {
     const wrapper = (...args: any[]) => {
       this.off(event, wrapper);
+      this.onceMap.delete(handler);
       handler(...args);
     };
+    this.onceMap.set(handler, wrapper);
     this.on(event, wrapper);
   }
 
   removeAllListeners(): void {
     this.listeners.clear();
+    this.onceMap.clear();
   }
 }
 
@@ -49,7 +60,9 @@ export function addListener(
   return () => el.removeEventListener(event, handler, options);
 }
 
-export function throttle<T extends (...args: any[]) => void>(fn: T, ms: number): T {
+export type ThrottledFunction<T extends (...args: any[]) => void> = T & { cancel(): void };
+
+export function throttle<T extends (...args: any[]) => void>(fn: T, ms: number): ThrottledFunction<T> {
   let lastCall = 0;
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
@@ -71,7 +84,14 @@ export function throttle<T extends (...args: any[]) => void>(fn: T, ms: number):
         fn.apply(this, args);
       }, remaining);
     }
-  } as T;
+  } as ThrottledFunction<T>;
+
+  throttled.cancel = () => {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+      timeoutId = null;
+    }
+  };
 
   return throttled;
 }

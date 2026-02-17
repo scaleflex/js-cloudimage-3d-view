@@ -20,10 +20,15 @@ export function captureScreenshot(
 }
 
 export function downloadScreenshot(dataUrl: string, filename = 'screenshot'): void {
+  if (!dataUrl) return;
+
   const a = document.createElement('a');
   a.href = dataUrl;
   a.download = `${filename}.png`;
   document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+  try {
+    a.click();
+  } finally {
+    document.body.removeChild(a);
+  }
 }

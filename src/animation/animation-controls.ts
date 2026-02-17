@@ -1,9 +1,9 @@
 import { createElement } from '../utils/dom';
 import type { AnimationMixerWrapper } from './animation-mixer';
 
-const PLAY_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
-const PAUSE_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
-const STOP_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></svg>';
+const PLAY_SVG = '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
+const PAUSE_SVG = '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
+const STOP_SVG = '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></svg>';
 
 export interface AnimationControlsUI {
   element: HTMLElement;
@@ -19,10 +19,10 @@ export function createAnimationControls(
 
   const element = createElement('div', 'ci-3d-animation-controls');
 
-  const playBtn = createElement('button', 'ci-3d-animation-play', { 'aria-label': 'Play animation' });
+  const playBtn = createElement('button', 'ci-3d-animation-play', { 'aria-label': 'Play animation', 'aria-pressed': 'false' });
   playBtn.innerHTML = PLAY_SVG;
 
-  const pauseBtn = createElement('button', 'ci-3d-animation-pause', { 'aria-label': 'Pause animation' });
+  const pauseBtn = createElement('button', 'ci-3d-animation-pause', { 'aria-label': 'Pause animation', 'aria-pressed': 'false' });
   pauseBtn.innerHTML = PAUSE_SVG;
 
   const stopBtn = createElement('button', 'ci-3d-animation-stop', { 'aria-label': 'Stop animation' });
@@ -36,12 +36,24 @@ export function createAnimationControls(
     select.appendChild(option);
   });
 
+  function updateButtonStates(state: 'playing' | 'paused' | 'stopped') {
+    playBtn.setAttribute('aria-pressed', String(state === 'playing'));
+    pauseBtn.setAttribute('aria-pressed', String(state === 'paused'));
+  }
+
   const onPlay = () => {
     const selectedIndex = parseInt(select.value, 10);
     mixer.play(selectedIndex);
+    updateButtonStates('playing');
   };
-  const onPause = () => mixer.pause();
-  const onStop = () => mixer.stop();
+  const onPause = () => {
+    mixer.pause();
+    updateButtonStates('paused');
+  };
+  const onStop = () => {
+    mixer.stop();
+    updateButtonStates('stopped');
+  };
   const onSelect = () => {
     const selectedIndex = parseInt(select.value, 10);
     mixer.play(selectedIndex);

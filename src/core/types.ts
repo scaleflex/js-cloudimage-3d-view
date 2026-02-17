@@ -1,4 +1,5 @@
 import type { Group, Scene, PerspectiveCamera, WebGLRenderer, AnimationClip } from 'three';
+import type { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 export type ToneMappingMode = 'none' | 'linear' | 'reinhard' | 'aces' | 'filmic';
 
@@ -80,7 +81,7 @@ export interface CI3DViewInstance {
     scene: Scene;
     camera: PerspectiveCamera;
     renderer: WebGLRenderer;
-    controls: any;
+    controls: OrbitControls;
     model: Group | null;
   };
   getElements(): {

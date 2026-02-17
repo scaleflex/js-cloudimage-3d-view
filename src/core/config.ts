@@ -39,7 +39,13 @@ export const DEFAULT_CONFIG: CI3DViewConfig = {
 };
 
 function toBool(v: string): boolean {
-  return v === 'true';
+  return v === 'true' || v === '1' || v === 'yes' || v === '';
+}
+
+function toNumber(v: string): number | undefined {
+  if (v.trim() === '') return undefined;
+  const n = Number(v);
+  return isNaN(n) ? undefined : n;
 }
 
 function toNumberOrString(v: string): number | string {
@@ -55,14 +61,14 @@ const DATA_ATTR_MAP: Record<string, { key: string; coerce: (v: string) => unknow
   'zoom':                   { key: 'zoom',                 coerce: toBool },
   'pan':                    { key: 'pan',                  coerce: toBool },
   'auto-rotate':            { key: 'autoRotate',           coerce: toBool },
-  'auto-rotate-speed':      { key: 'autoRotateSpeed',      coerce: Number },
-  'auto-rotate-delay':      { key: 'autoRotateDelay',      coerce: Number },
+  'auto-rotate-speed':      { key: 'autoRotateSpeed',      coerce: toNumber },
+  'auto-rotate-delay':      { key: 'autoRotateDelay',      coerce: toNumber },
   'damping':                { key: 'damping',              coerce: toBool },
-  'damping-factor':         { key: 'dampingFactor',        coerce: Number },
-  'zoom-min':               { key: 'zoomMin',              coerce: Number },
-  'zoom-max':               { key: 'zoomMax',              coerce: Number },
-  'polar-angle-min':        { key: 'polarAngleMin',        coerce: Number },
-  'polar-angle-max':        { key: 'polarAngleMax',        coerce: Number },
+  'damping-factor':         { key: 'dampingFactor',        coerce: toNumber },
+  'zoom-min':               { key: 'zoomMin',              coerce: toNumber },
+  'zoom-max':               { key: 'zoomMax',              coerce: toNumber },
+  'polar-angle-min':        { key: 'polarAngleMin',        coerce: toNumber },
+  'polar-angle-max':        { key: 'polarAngleMax',        coerce: toNumber },
   'theme':                  { key: 'theme',                coerce: String },
   'background':             { key: 'background',           coerce: String },
   'show-progress':          { key: 'showProgress',         coerce: toBool },
@@ -70,27 +76,39 @@ const DATA_ATTR_MAP: Record<string, { key: string; coerce: (v: string) => unknow
   'background-toggle-button': { key: 'backgroundToggleButton', coerce: toBool },
   'screenshot-button':      { key: 'screenshotButton',     coerce: toBool },
   'screenshot-filename':    { key: 'screenshotFilename',   coerce: String },
-  'screenshot-scale':       { key: 'screenshotScale',      coerce: Number },
+  'screenshot-scale':       { key: 'screenshotScale',      coerce: toNumber },
   'reset-camera-button':    { key: 'resetCameraButton',    coerce: toBool },
   'auto-rotate-button':     { key: 'autoRotateButton',     coerce: toBool },
   'animation-buttons':      { key: 'animationButtons',     coerce: toBool },
   'toolbar-position':       { key: 'toolbarPosition',      coerce: String },
   'shadows':                { key: 'shadows',              coerce: toBool },
-  'shadow-opacity':         { key: 'shadowOpacity',        coerce: Number },
-  'shadow-blur':            { key: 'shadowBlur',           coerce: Number },
+  'shadow-opacity':         { key: 'shadowOpacity',        coerce: toNumber },
+  'shadow-blur':            { key: 'shadowBlur',           coerce: toNumber },
   'environment-map':        { key: 'environmentMap',       coerce: String },
   'environment-background': { key: 'environmentBackground', coerce: toBool },
   'tone-mapping':           { key: 'toneMapping',          coerce: String },
-  'tone-mapping-exposure':  { key: 'toneMappingExposure',  coerce: Number },
+  'tone-mapping-exposure':  { key: 'toneMappingExposure',  coerce: toNumber },
   'draco':                  { key: 'draco',                coerce: toBool },
   'draco-decoder-path':     { key: 'dracoDecoderPath',     coerce: String },
   'animation':              { key: 'animation',            coerce: toNumberOrString },
   'auto-play-animation':    { key: 'autoPlayAnimation',    coerce: toBool },
-  'animation-speed':        { key: 'animationSpeed',       coerce: Number },
-  'camera-position':        { key: 'cameraPosition',       coerce: JSON.parse },
-  'camera-fov':             { key: 'cameraFov',            coerce: Number },
-  'camera-target':          { key: 'cameraTarget',         coerce: JSON.parse },
-  'pixel-ratio':            { key: 'pixelRatio',           coerce: Number },
+  'animation-speed':        { key: 'animationSpeed',       coerce: toNumber },
+  'camera-position':        { key: 'cameraPosition',       coerce: (v: string) => {
+    const arr = JSON.parse(v);
+    if (!Array.isArray(arr) || arr.length !== 3 || arr.some((n: any) => typeof n !== 'number' || !isFinite(n))) {
+      throw new Error('Expected [x, y, z] tuple of finite numbers');
+    }
+    return arr as [number, number, number];
+  } },
+  'camera-fov':             { key: 'cameraFov',            coerce: toNumber },
+  'camera-target':          { key: 'cameraTarget',         coerce: (v: string) => {
+    const arr = JSON.parse(v);
+    if (!Array.isArray(arr) || arr.length !== 3 || arr.some((n: any) => typeof n !== 'number' || !isFinite(n))) {
+      throw new Error('Expected [x, y, z] tuple of finite numbers');
+    }
+    return arr as [number, number, number];
+  } },
+  'pixel-ratio':            { key: 'pixelRatio',           coerce: toNumber },
   'antialias':              { key: 'antialias',            coerce: toBool },
   'scroll-to-zoom':         { key: 'scrollToZoom',         coerce: toBool },
   'lighting':               { key: 'lighting',             coerce: JSON.parse },
@@ -98,7 +116,6 @@ const DATA_ATTR_MAP: Record<string, { key: string; coerce: (v: string) => unknow
 
 export function parseDataAttributes(element: HTMLElement): Partial<CI3DViewConfig> {
   const config: Record<string, unknown> = {};
-  const prefix = 'ci3d';
 
   for (const [attrSuffix, mapping] of Object.entries(DATA_ATTR_MAP)) {
     const attrName = `data-ci-3d-${attrSuffix}`;
@@ -107,8 +124,8 @@ export function parseDataAttributes(element: HTMLElement): Partial<CI3DViewConfi
     if (value !== null) {
       try {
         config[mapping.key] = mapping.coerce(value);
-      } catch {
-        // Skip malformed attribute values
+      } catch (e) {
+        console.warn(`CI3DView: failed to parse data attribute "${attrName}":`, e);
       }
     }
   }
@@ -145,6 +162,25 @@ export function validateConfig(config: CI3DViewConfig): string[] {
 
   if (config.toneMapping && !['none', 'linear', 'reinhard', 'aces', 'filmic'].includes(config.toneMapping)) {
     errors.push(`Invalid toneMapping: "${config.toneMapping}".`);
+  }
+
+  if (config.polarAngleMin !== undefined && (config.polarAngleMin < 0 || config.polarAngleMin > 180)) {
+    errors.push(`polarAngleMin must be between 0 and 180, got ${config.polarAngleMin}.`);
+  }
+  if (config.polarAngleMax !== undefined && (config.polarAngleMax < 0 || config.polarAngleMax > 180)) {
+    errors.push(`polarAngleMax must be between 0 and 180, got ${config.polarAngleMax}.`);
+  }
+  if (config.shadowOpacity !== undefined && (config.shadowOpacity < 0 || config.shadowOpacity > 1)) {
+    errors.push(`shadowOpacity must be between 0 and 1, got ${config.shadowOpacity}.`);
+  }
+  if (config.animationSpeed !== undefined && config.animationSpeed < 0) {
+    errors.push(`animationSpeed must be non-negative, got ${config.animationSpeed}.`);
+  }
+  if (config.pixelRatio !== undefined && config.pixelRatio <= 0) {
+    errors.push(`pixelRatio must be positive, got ${config.pixelRatio}.`);
+  }
+  if (config.cameraFov !== undefined && (config.cameraFov <= 0 || config.cameraFov >= 180)) {
+    errors.push(`cameraFov must be between 0 (exclusive) and 180 (exclusive), got ${config.cameraFov}.`);
   }
 
   return errors;

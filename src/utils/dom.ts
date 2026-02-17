@@ -40,12 +40,31 @@ export function toggleClass(el: HTMLElement, className: string, force?: boolean)
   el.classList.toggle(className, force);
 }
 
+const styleRefCounts = new Map<string, number>();
+
 export function injectStyles(css: string, id: string): void {
   if (!isBrowser()) return;
+
+  const count = styleRefCounts.get(id) ?? 0;
+  styleRefCounts.set(id, count + 1);
+
   if (document.getElementById(id)) return;
 
   const style = document.createElement('style');
   style.id = id;
   style.textContent = css;
   document.head.appendChild(style);
+}
+
+export function removeStyles(id: string): void {
+  if (!isBrowser()) return;
+
+  const count = (styleRefCounts.get(id) ?? 0) - 1;
+  if (count < 0) return;
+  if (count <= 0) {
+    styleRefCounts.delete(id);
+    document.getElementById(id)?.remove();
+  } else {
+    styleRefCounts.set(id, count);
+  }
 }

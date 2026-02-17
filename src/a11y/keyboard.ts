@@ -30,11 +30,12 @@ export class KeyboardHandler {
         return;
       }
 
-      // Don't interfere with input elements
+      // Don't interfere with input or editable elements
       if (
         document.activeElement instanceof HTMLInputElement ||
         document.activeElement instanceof HTMLTextAreaElement ||
-        document.activeElement instanceof HTMLSelectElement
+        document.activeElement instanceof HTMLSelectElement ||
+        document.activeElement?.getAttribute('contenteditable') === 'true'
       ) {
         return;
       }

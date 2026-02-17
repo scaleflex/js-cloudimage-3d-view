@@ -22,6 +22,12 @@ export function setupOrbitControls(
   if (config.polarAngleMax !== undefined) {
     controls.maxPolarAngle = degreesToRadians(config.polarAngleMax);
   }
+  // Ensure min <= max for polar angles
+  if (controls.minPolarAngle > controls.maxPolarAngle) {
+    const tmp = controls.minPolarAngle;
+    controls.minPolarAngle = controls.maxPolarAngle;
+    controls.maxPolarAngle = tmp;
+  }
 
   if (config.cameraTarget) {
     controls.target.set(
@@ -43,14 +49,22 @@ export function updateControlsConstraints(
 ): void {
   const radius = Math.max(modelSphere.radius, 0.01);
 
-  controls.minDistance = config.zoomMin ?? radius * 1.2;
-  controls.maxDistance = config.zoomMax ?? radius * 5;
+  const minDist = config.zoomMin ?? radius * 1.2;
+  const maxDist = config.zoomMax ?? radius * 5;
+  controls.minDistance = Math.min(minDist, maxDist);
+  controls.maxDistance = Math.max(minDist, maxDist);
 
   if (config.polarAngleMin !== undefined) {
     controls.minPolarAngle = degreesToRadians(config.polarAngleMin);
   }
   if (config.polarAngleMax !== undefined) {
     controls.maxPolarAngle = degreesToRadians(config.polarAngleMax);
+  }
+  // Ensure min <= max for polar angles
+  if (controls.minPolarAngle > controls.maxPolarAngle) {
+    const tmp = controls.minPolarAngle;
+    controls.minPolarAngle = controls.maxPolarAngle;
+    controls.maxPolarAngle = tmp;
   }
 
   controls.update();

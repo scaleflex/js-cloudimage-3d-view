@@ -25,14 +25,15 @@ export async function loadEnvironmentMap(
     loader = new RGBELoader();
   }
 
-  // Dispose existing environment before loading new one
-  disposeEnvironment(scene);
-
   return new Promise((resolve, reject) => {
     loader.load(
       url,
       (texture: any) => {
+        // Create new envMap first, then dispose old (so old survives if this throws)
         const envMap = pmrem.fromEquirectangular(texture).texture;
+
+        // Dispose old environment only after new envMap created successfully
+        disposeEnvironment(scene);
         scene.environment = envMap;
         if (showBackground) scene.background = envMap;
         texture.dispose();
@@ -57,9 +58,11 @@ export function disposeEnvironment(scene: Scene): void {
   }
   if (scene.background && typeof (scene.background as any).dispose === 'function') {
     // Only dispose background if it's a different texture than environment
+    // and it is actually a texture (not a Color set by the theme)
     if (!sameTexture) {
       (scene.background as any).dispose();
     }
     scene.background = null;
   }
+  // Don't null out Color backgrounds — they belong to the theme, not the environment
 }

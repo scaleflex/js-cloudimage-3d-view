@@ -3,6 +3,7 @@ import {
   Vector3,
   Sphere,
   Object3D,
+  Mesh,
   PerspectiveCamera,
 } from 'three';
 
@@ -12,9 +13,11 @@ export function computeBoundingBox(object: Object3D): Box3 {
 
   const box = new Box3();
 
-  // Compute from mesh geometries directly for accuracy (avoids skeleton bone inflation)
-  object.traverse((child: any) => {
-    if (child.isMesh && child.geometry) {
+  // Compute from mesh geometries for accuracy (includes SkinnedMesh which extends Mesh).
+  // Always use geometry.boundingBox (bind-pose) — SkinnedMesh.computeBoundingBox()
+  // requires a fully initialized skeleton which may not be ready at load time.
+  object.traverse((child) => {
+    if (child instanceof Mesh && child.geometry) {
       child.geometry.computeBoundingBox();
       const geomBox = child.geometry.boundingBox;
       if (geomBox && !geomBox.isEmpty()) {
@@ -49,9 +52,10 @@ export function scaleToFit(model: Object3D, box: Box3, targetSize = 2): number {
   const size = box.getSize(new Vector3());
   const maxDim = Math.max(size.x, size.y, size.z);
   if (maxDim === 0) return 1;
-  const scale = targetSize / maxDim;
-  model.scale.set(scale, scale, scale);
-  return scale;
+  const scaleFactor = targetSize / maxDim;
+  // Multiply existing scale (preserves loader-set transforms like FBX cm→m conversion)
+  model.scale.multiplyScalar(scaleFactor);
+  return scaleFactor;
 }
 
 export function fitCameraToModel(
@@ -59,8 +63,11 @@ export function fitCameraToModel(
   sphere: Sphere,
   padding = 1.2,
 ): void {
-  const fov = camera.fov * (Math.PI / 180);
-  const distance = (sphere.radius * padding) / Math.sin(fov / 2);
+  const vFov = camera.fov * (Math.PI / 180);
+  const hFov = 2 * Math.atan(Math.tan(vFov / 2) * camera.aspect);
+  // Use the smaller FOV (tighter fit) to ensure model fits both axes
+  const effectiveFov = Math.min(vFov, hFov);
+  const distance = (sphere.radius * padding) / Math.sin(effectiveFov / 2);
   camera.position.set(0, sphere.radius * 0.5, distance);
   camera.lookAt(0, 0, 0);
   camera.near = distance / 100;

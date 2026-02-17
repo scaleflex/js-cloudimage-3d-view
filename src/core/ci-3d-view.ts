@@ -17,12 +17,12 @@ import type { CI3DViewConfig, CI3DViewInstance } from './types';
 import { DEFAULT_CONFIG, parseDataAttributes, mergeConfig, validateConfig } from './config';
 import { createRenderer, handleResize, getToneMappingConstant } from './renderer';
 import { createScene, createCamera } from './scene';
-import { getElement, createElement, addClass, removeClass, injectStyles } from '../utils/dom';
+import { getElement, createElement, addClass, removeClass, injectStyles, removeStyles } from '../utils/dom';
 import { computeBoundingBox, computeBoundingSphere, centerModel, scaleToFit, fitCameraToModel } from '../utils/math';
 import { disposeObject3D } from '../utils/dispose';
-import { throttle } from '../utils/events';
+import { throttle, type ThrottledFunction } from '../utils/events';
 import { getLoader } from '../loaders/loader-registry';
-import { create3PointLighting, reduceLightingForIBL, disposeLighting, applyLightingConfig, type LightingRig } from '../lighting/lighting';
+import { create3PointLighting, reduceLightingForIBL, disposeLighting, applyLightingConfig, updateShadowFrustum, type LightingRig } from '../lighting/lighting';
 import { loadEnvironmentMap, disposeEnvironment } from '../lighting/environment';
 import { createGroundPlane, disposeGroundPlane } from '../lighting/shadows';
 import { setupOrbitControls, updateControlsConstraints } from '../controls/orbit-controls';
@@ -65,7 +65,9 @@ export class CI3DView implements CI3DViewInstance {
   private bgToggleBtn: HTMLElement | null = null;
   private isDarkBackground = false;
 
-  private throttledCameraChange: ((pos: any, target: any) => void) | null = null;
+  private throttledCameraChange: ThrottledFunction<(pos: any, target: any) => void> | null = null;
+  private lastCameraPos = new Vector3();
+  private lastCameraTarget = new Vector3();
 
   // Scroll hint
   private scrollHint: HTMLElement | null = null;
@@ -144,6 +146,8 @@ export class CI3DView implements CI3DViewInstance {
 
   async loadModel(src: string, mtlSrc?: string): Promise<void> {
     if (this.destroyed) return;
+    // Cancel any pending camera reset animation
+    this.cameraResetHandle?.cancel();
     // Dispose old model
     if (this.model) {
       this.disposeModel();
@@ -429,6 +433,9 @@ export class CI3DView implements CI3DViewInstance {
     // Dispose renderer
     this.renderer.dispose();
 
+    // Cancel throttled camera change
+    this.throttledCameraChange?.cancel();
+
     // Disconnect resize observer
     this.resizeObserver?.disconnect();
 
@@ -449,6 +456,9 @@ export class CI3DView implements CI3DViewInstance {
 
     // Remove container classes
     removeClass(this.container, 'ci-3d-container', 'ci-3d-theme-dark');
+
+    // Release styles reference
+    removeStyles('ci-3d-styles');
   }
 
   // === Private Methods ===
@@ -465,6 +475,14 @@ export class CI3DView implements CI3DViewInstance {
     this.container.setAttribute('aria-roledescription', '3D viewer');
     this.container.setAttribute('aria-label', `3D model viewer: ${this.config.alt || '3D model'}`);
     this.container.setAttribute('tabindex', '0');
+
+    // Hidden keyboard instructions for screen readers
+    const kbdHelpId = `ci-3d-kbd-help-${Date.now()}`;
+    const kbdHelp = createElement('div', 'ci-3d-sr-only');
+    kbdHelp.id = kbdHelpId;
+    kbdHelp.textContent = 'Use arrow keys to rotate, plus/minus to zoom, 0 to reset camera, R for auto-rotate, F for fullscreen, Space for animation.';
+    this.container.appendChild(kbdHelp);
+    this.container.setAttribute('aria-describedby', kbdHelpId);
 
     // Canvas
     this.canvas = createElement('canvas', 'ci-3d-canvas');
@@ -493,7 +511,7 @@ export class CI3DView implements CI3DViewInstance {
     // Error overlay
     this.errorOverlay = createElement('div', 'ci-3d-error', { 'role': 'alert', 'aria-live': 'assertive' });
     const errorIcon = createElement('div', 'ci-3d-error-icon');
-    errorIcon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+    errorIcon.innerHTML = '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
     const errorMessage = createElement('div', 'ci-3d-error-message');
     errorMessage.textContent = 'Failed to load model';
     const retryButton = createElement('button', 'ci-3d-error-retry');
@@ -502,7 +520,7 @@ export class CI3DView implements CI3DViewInstance {
     retryButton.addEventListener('click', () => {
       this.hideError();
       this.showLoading();
-      this.loadModelInternal(this.config.src, this.config.mtlSrc);
+      this.loadModelInternal(this.config.src, this.config.mtlSrc).catch(() => {});
     });
     this.errorOverlay.appendChild(errorIcon);
     this.errorOverlay.appendChild(errorMessage);
@@ -518,7 +536,7 @@ export class CI3DView implements CI3DViewInstance {
           'aria-label': 'Enter fullscreen',
           'aria-pressed': 'false',
         });
-        fullscreenBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>';
+        fullscreenBtn.innerHTML = '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>';
         fullscreenBtn.addEventListener('click', () => {
           if (this.isFullscreen()) {
             this.exitFullscreen();
@@ -556,7 +574,8 @@ export class CI3DView implements CI3DViewInstance {
     }
 
     // Scroll hint overlay
-    const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.platform);
+    const isMac = typeof navigator !== 'undefined' &&
+      /Mac|iPhone|iPad|iPod/.test((navigator as any).userAgentData?.platform ?? navigator.platform);
     this.scrollHint = createElement('div', 'ci-3d-scroll-hint');
     this.scrollHint.textContent = isMac ? '\u2318 + scroll to zoom' : 'Ctrl + scroll to zoom';
     this.container.appendChild(this.scrollHint);
@@ -589,10 +608,10 @@ export class CI3DView implements CI3DViewInstance {
     if (!this.bgToggleBtn) return;
     if (this.isDarkBackground) {
       // Moon icon (dark mode active → click for light)
-      this.bgToggleBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+      this.bgToggleBtn.innerHTML = '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
     } else {
       // Sun icon (light mode active → click for dark)
-      this.bgToggleBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>';
+      this.bgToggleBtn.innerHTML = '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>';
     }
   }
 
@@ -640,10 +659,15 @@ export class CI3DView implements CI3DViewInstance {
       if (this.throttledCameraChange) {
         const pos = this.camera.position;
         const target = this.controls.target;
-        this.throttledCameraChange(
-          { x: pos.x, y: pos.y, z: pos.z },
-          { x: target.x, y: target.y, z: target.z },
-        );
+        // Only fire callback when camera actually moved
+        if (!pos.equals(this.lastCameraPos) || !target.equals(this.lastCameraTarget)) {
+          this.lastCameraPos.copy(pos);
+          this.lastCameraTarget.copy(target);
+          this.throttledCameraChange(
+            { x: pos.x, y: pos.y, z: pos.z },
+            { x: target.x, y: target.y, z: target.z },
+          );
+        }
       }
     };
 
@@ -692,8 +716,8 @@ export class CI3DView implements CI3DViewInstance {
 
       // Enable shadow casting on model meshes
       if (this.config.shadows) {
-        this.model.traverse((child: any) => {
-          if (child.isMesh) {
+        this.model.traverse((child) => {
+          if (child instanceof Mesh) {
             child.castShadow = true;
             child.receiveShadow = true;
           }
@@ -707,6 +731,11 @@ export class CI3DView implements CI3DViewInstance {
 
       // Update controls constraints (reuse existing controls, don't recreate)
       updateControlsConstraints(this.controls, sphere, this.config);
+
+      // Adapt shadow frustum to model size
+      if (this.lights) {
+        updateShadowFrustum(this.lights, sphere.radius);
+      }
 
       // Fit camera if no custom position set
       if (!this.config.cameraPosition) {
@@ -857,15 +886,17 @@ export class CI3DView implements CI3DViewInstance {
   }
 
   private disposeModel(): void {
+    // Uncache mixer before nulling model (model ref needed for uncacheRoot)
+    if (this.mixer) {
+      this.mixer.stopAllAction();
+      if (this.model) this.mixer.uncacheRoot(this.model);
+      this.mixer = null;
+    }
+
     if (this.model) {
       this.scene.remove(this.model);
       disposeObject3D(this.model);
       this.model = null;
-    }
-
-    if (this.mixer) {
-      this.mixer.stopAllAction();
-      this.mixer = null;
     }
 
     this.currentAction = null;
@@ -909,9 +940,11 @@ export class CI3DView implements CI3DViewInstance {
       const msgEl = this.errorOverlay.querySelector('.ci-3d-error-message');
       if (msgEl) msgEl.textContent = message;
 
-      // Focus retry button for a11y
-      const retryBtn = this.errorOverlay.querySelector<HTMLButtonElement>('.ci-3d-error-retry');
-      retryBtn?.focus();
+      // Focus retry button only if the viewer already has focus
+      if (this.container.contains(document.activeElement) || document.activeElement === this.container) {
+        const retryBtn = this.errorOverlay.querySelector<HTMLButtonElement>('.ci-3d-error-retry');
+        retryBtn?.focus();
+      }
     }
   }
 
