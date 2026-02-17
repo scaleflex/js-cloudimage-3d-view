@@ -64,7 +64,7 @@ describe('Integration: CI3DView lifecycle', () => {
     document.getElementById('ci-3d-styles')?.remove();
   });
 
-  it('full init → DOM creation → destroy lifecycle', () => {
+  it('full init → DOM creation → destroy lifecycle', async () => {
     const onLoadStart = vi.fn();
     const instance = new CI3DView(container, {
       src: 'model.glb',
@@ -74,14 +74,17 @@ describe('Integration: CI3DView lifecycle', () => {
       onLoadStart,
     });
 
-    // DOM structure created
+    // DOM structure created (synchronous)
     expect(container.classList.contains('ci-3d-container')).toBe(true);
     expect(container.querySelector('.ci-3d-canvas')).toBeTruthy();
     expect(container.querySelector('.ci-3d-loading')).toBeTruthy();
     expect(container.querySelector('.ci-3d-error')).toBeTruthy();
     expect(container.querySelector('.ci-3d-controls')).toBeTruthy();
     expect(container.querySelector('.ci-3d-fullscreen-btn')).toBeTruthy();
-    expect(container.querySelector('.ci-3d-screenshot-btn')).toBeTruthy();
+
+    // Toolbar is created after async model load
+    await new Promise((r) => setTimeout(r, 50));
+    expect(container.querySelector('.ci-3d-toolbar-btn[aria-label="Take screenshot"]')).toBeTruthy();
 
     // ARIA attributes
     expect(container.getAttribute('role')).toBe('application');
@@ -200,7 +203,7 @@ describe('Integration: CI3DView lifecycle', () => {
       screenshotButton: false,
     });
     expect(c2.querySelector('.ci-3d-fullscreen-btn')).toBeTruthy();
-    expect(c2.querySelector('.ci-3d-screenshot-btn')).toBeNull();
+    expect(c2.querySelector('.ci-3d-toolbar-btn[aria-label="Take screenshot"]')).toBeNull();
     i2.destroy();
     document.body.removeChild(c2);
   });

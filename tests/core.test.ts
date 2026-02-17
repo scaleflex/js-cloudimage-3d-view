@@ -118,12 +118,14 @@ describe('CI3DView', () => {
     instance.destroy();
   });
 
-  it('creates screenshot button when configured', () => {
+  it('creates screenshot button when configured', async () => {
     const instance = new CI3DView(container, {
       src: 'model.glb',
       screenshotButton: true,
     });
-    const btn = container.querySelector('.ci-3d-screenshot-btn');
+    // Toolbar is created after async model load
+    await new Promise((r) => setTimeout(r, 50));
+    const btn = container.querySelector('.ci-3d-toolbar-btn[aria-label="Take screenshot"]');
     expect(btn).toBeTruthy();
     instance.destroy();
   });

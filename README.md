@@ -1,32 +1,62 @@
-# js-cloudimage-3d-view
+<p align="center">
+  <img src="https://scaleflex.cloudimg.io/v7/plugins/js-cloudimage-360-view/logo_scaleflex_on_white_bg.jpg?vh=91b12d&w=700" alt="Scaleflex" width="350">
+</p>
 
-[![npm version](https://img.shields.io/npm/v/js-cloudimage-3d-view.svg)](https://www.npmjs.com/package/js-cloudimage-3d-view)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue.svg)](https://www.typescriptlang.org/)
+<h1 align="center">js-cloudimage-3d-view</h1>
 
-A lightweight Three.js-powered TypeScript library for interactive 3D model viewers with orbit controls, lighting, environment maps, shadows, animation playback, and WCAG 2.1 AA accessibility.
+<p align="center">
+  Interactive 3D model viewer with orbit controls, lighting, animations, and accessibility. Powered by Three.js.
+</p>
 
-[Demo](https://scaleflex.github.io/js-cloudimage-3d-view/) | [Documentation](#api-reference) | [React](#react)
+<p align="center">
+  <a href="https://www.npmjs.com/package/js-cloudimage-3d-view"><img src="https://img.shields.io/npm/v/js-cloudimage-3d-view.svg?style=flat-square" alt="npm version"></a>
+  <a href="https://www.npmjs.com/package/js-cloudimage-3d-view"><img src="https://img.shields.io/npm/dm/js-cloudimage-3d-view.svg?style=flat-square" alt="npm downloads"></a>
+  <a href="https://github.com/scaleflex/js-cloudimage-3d-view/blob/main/LICENSE"><img src="https://img.shields.io/npm/l/js-cloudimage-3d-view.svg?style=flat-square" alt="license"></a>
+  <a href="https://bundlephobia.com/package/js-cloudimage-3d-view"><img src="https://img.shields.io/bundlephobia/minzip/js-cloudimage-3d-view?style=flat-square" alt="bundle size"></a>
+</p>
+
+<p align="center">
+  <a href="https://scaleflex.github.io/js-cloudimage-3d-view/">Live Demo</a>
+</p>
+
+---
+
+## Why js-cloudimage-3d-view?
+
+Embedding 3D models on the web shouldn't require writing Three.js boilerplate. This library handles all the heavy lifting:
+
+- **Drop-in viewer** — one line of JS or a single HTML element to display any 3D model
+- **Multi-format** — GLTF/GLB, OBJ+MTL, STL, FBX, 3DS, and AMF out of the box
+- **Accessible by default** — WCAG 2.1 AA compliant with keyboard navigation and screen reader support
+- **Framework-agnostic** — works with vanilla JS, React, or any framework
+- **Full camera controls** — orbit, zoom, pan, auto-rotate with damping
+- **Animations** — play, pause, stop, speed control for embedded animations
+- **Lighting & environment** — 3-point lighting, HDR/EXR environment maps, tone mapping
+- **Lightweight** — ~14 KB gzipped (Three.js as peer dependency)
+
+---
 
 ## Features
 
-- **Format Support** — GLB/glTF (with Draco compression), OBJ + MTL
-- **Orbit Controls** — Damping, zoom/rotation constraints, auto-rotate with pause-on-interact
-- **Lighting** — 3-point lighting, HDR/EXR environment maps, configurable shadows
-- **Tone Mapping** — ACES Filmic, Reinhard, Cineon, Linear
-- **Animation** — Play/pause/stop with speed control for models with embedded animations
-- **Screenshots** — Capture and download at configurable resolution
-- **Fullscreen** — One-click fullscreen toggle
-- **Theming** — Light/dark themes with CSS variable customization
-- **Accessibility** — WCAG 2.1 AA keyboard navigation, ARIA attributes, focus management
-- **React Wrapper** — First-class React component with SSR safety
-- **TypeScript** — Full type definitions with strict mode
-- **Zero Dependencies** — Three.js is the only peer dependency
-- **Declarative** — 40+ HTML data-attributes for no-code configuration
+- **Orbit controls** — mouse/touch rotation, zoom, and pan with configurable damping
+- **Auto-rotate** — configurable speed with pause-on-interact and resume delay
+- **Animation playback** — play/pause/stop/speed control with toolbar buttons
+- **3-point lighting** — ambient + key/fill/rim lights, fully configurable
+- **Environment maps** — HDR/EXR support with PMREM, optional background display
+- **Tone mapping** — ACES filmic, Reinhard, Cineon, Linear, or None
+- **Shadows** — soft shadow ground plane with configurable opacity
+- **Screenshot** — capture and download the current view as PNG
+- **Fullscreen** — one-click fullscreen toggle
+- **Themes** — light and dark themes
+- **Progress bar** — loading progress with accessible ARIA attributes
+- **Ctrl+scroll zoom** — optional scroll interception with tooltip hint
+- **DRACO compression** — automatic DRACO decoder for compressed GLTF/GLB
+- **40+ data attributes** — fully declarative HTML configuration
+- **WCAG 2.1 AA** — keyboard navigation, ARIA attributes, focus management, reduced motion
+- **React wrapper** — component, hook, and ref API with SSR safety
+- **TypeScript** — full type definitions with strict mode
 
 ## Installation
-
-### npm
 
 ```bash
 npm install js-cloudimage-3d-view three
@@ -35,35 +65,37 @@ npm install js-cloudimage-3d-view three
 ### CDN
 
 ```html
-<!-- Three.js (required) -->
-<script src="https://unpkg.com/three/build/three.min.js"></script>
-
-<!-- js-cloudimage-3d-view -->
+<script src="https://unpkg.com/three/build/three.module.js"></script>
 <script src="https://unpkg.com/js-cloudimage-3d-view"></script>
 ```
 
 ## Quick Start
 
-### JavaScript
+### JavaScript API
 
 ```js
-import { CI3DView } from 'js-cloudimage-3d-view';
+import CI3DView from 'js-cloudimage-3d-view';
 
-const viewer = new CI3DView('#container', {
-  src: 'model.glb',
+const viewer = new CI3DView('#my-container', {
+  src: 'https://example.com/model.glb',
   autoRotate: true,
   shadows: true,
+  theme: 'dark',
+  onLoad(instance) {
+    console.log('Model loaded!', instance.getAnimations());
+  },
 });
 ```
 
-### HTML Data Attributes
+### HTML Data-Attributes
 
 ```html
 <div
-  data-ci-3d-src="model.glb"
-  data-ci-3d-auto-rotate="true"
-  data-ci-3d-shadows="true"
-  style="width: 100%; aspect-ratio: 16/9"
+  data-ci-3d-src="https://example.com/model.glb"
+  data-ci-3d-auto-rotate
+  data-ci-3d-shadows
+  data-ci-3d-theme="dark"
+  style="width: 100%; height: 500px;"
 ></div>
 
 <script>
@@ -71,227 +103,287 @@ const viewer = new CI3DView('#container', {
 </script>
 ```
 
-## Configuration
+## Supported Formats
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `src` | `string` | `''` | Model URL (GLB, glTF, OBJ) |
-| `alt` | `string` | `'3D model viewer'` | Accessible label |
-| `theme` | `'light' \| 'dark'` | `'light'` | Color theme |
-| `background` | `string` | `'#f5f5f5'` | Scene background color |
-| `autoRotate` | `boolean` | `false` | Enable auto-rotation |
-| `autoRotateSpeed` | `number` | `0.5` | Rotation speed (rev/s) |
-| `autoRotateDelay` | `number` | `3000` | Resume delay after interaction (ms) |
-| `damping` | `boolean` | `true` | Smooth orbit damping |
-| `dampingFactor` | `number` | `0.05` | Damping strength |
-| `zoom` | `boolean` | `true` | Enable zoom |
-| `pan` | `boolean` | `true` | Enable panning |
-| `rotate` | `boolean` | `true` | Enable rotation |
-| `minDistance` | `number` | `0` | Minimum zoom distance |
-| `maxDistance` | `number` | `Infinity` | Maximum zoom distance |
-| `polarAngleMin` | `number` | `0` | Minimum vertical angle (degrees) |
-| `polarAngleMax` | `number` | `180` | Maximum vertical angle (degrees) |
-| `toneMapping` | `string` | `'aces'` | Tone mapping mode |
-| `toneMappingExposure` | `number` | `1.0` | Exposure value |
-| `shadows` | `boolean` | `false` | Enable ground shadows |
-| `shadowOpacity` | `number` | `0.3` | Shadow darkness |
-| `environmentMap` | `string` | `''` | HDR/EXR environment map URL |
-| `environmentMapIntensity` | `number` | `1.0` | Environment map intensity |
-| `autoPlayAnimation` | `boolean` | `false` | Auto-play first animation on load |
-| `animation` | `string \| number` | `undefined` | Animation name or index to play |
-| `animationSpeed` | `number` | `1.0` | Playback speed |
-| `fullscreenButton` | `boolean` | `false` | Show fullscreen button |
-| `screenshotButton` | `boolean` | `false` | Show screenshot button |
-| `dracoDecoderPath` | `string` | CDN default | Draco WASM decoder URL |
+| Format | Extensions | Notes |
+|--------|-----------|-------|
+| glTF / GLB | `.gltf`, `.glb` | Recommended. Supports DRACO compression, animations, PBR materials |
+| OBJ | `.obj` | Optional `.mtl` material file via `mtlSrc` config |
+| STL | `.stl` | Mesh-only, auto-assigned standard material |
+| FBX | `.fbx` | Supports skeletal animations |
+| 3DS | `.3ds` | Legacy Autodesk format |
+| AMF | `.amf` | Additive manufacturing format |
 
 ## API Reference
 
 ### Constructor
 
-```js
-const viewer = new CI3DView(element, config);
+```ts
+new CI3DView(element: HTMLElement | string, config: CI3DViewConfig)
 ```
 
-- `element` — CSS selector string or HTMLElement
-- `config` — Configuration object (see table above)
+### Config
 
-### Methods
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `src` | `string` | — | Model URL (required) |
+| `mtlSrc` | `string` | — | MTL material URL (for OBJ models) |
+| `alt` | `string` | `''` | Accessible description |
+| `controls` | `boolean` | `true` | Enable orbit controls |
+| `zoom` | `boolean` | `true` | Enable zoom |
+| `pan` | `boolean` | `true` | Enable pan |
+| `scrollToZoom` | `boolean` | `false` | Allow direct scroll-to-zoom (default: Ctrl+scroll) |
+| `autoRotate` | `boolean` | `false` | Enable auto-rotation |
+| `autoRotateSpeed` | `number` | `0.5` | Auto-rotate speed |
+| `autoRotateDelay` | `number` | `3000` | Delay (ms) before auto-rotate resumes after interaction |
+| `damping` | `boolean` | `true` | Enable inertia damping |
+| `dampingFactor` | `number` | `0.1` | Damping strength (0-1) |
+| `zoomMin` | `number` | — | Minimum zoom distance |
+| `zoomMax` | `number` | — | Maximum zoom distance |
+| `polarAngleMin` | `number` | `0` | Min vertical angle in degrees (0 = top) |
+| `polarAngleMax` | `number` | `180` | Max vertical angle in degrees (180 = bottom) |
+| `theme` | `'light' \| 'dark'` | `'light'` | Theme |
+| `background` | `string` | `'transparent'` | Background color |
+| `showProgress` | `boolean` | `true` | Show loading progress bar |
+| `fullscreenButton` | `boolean` | `true` | Show fullscreen button |
+| `screenshotButton` | `boolean` | `false` | Show screenshot button |
+| `screenshotFilename` | `string` | `'screenshot'` | Screenshot download filename |
+| `screenshotScale` | `number` | `2` | Screenshot resolution multiplier |
+| `resetCameraButton` | `boolean` | `true` | Show reset camera button |
+| `autoRotateButton` | `boolean` | `true` | Show auto-rotate toggle button |
+| `animationButtons` | `boolean` | `true` | Show animation play/pause/stop buttons |
+| `toolbarPosition` | `string` | `'bottom-center'` | `'bottom-left'`, `'bottom-center'`, or `'bottom-right'` |
+| `shadows` | `boolean` | `true` | Enable shadow ground plane |
+| `shadowOpacity` | `number` | `0.3` | Shadow opacity (0-1) |
+| `shadowBlur` | `number` | `2` | Shadow blur amount |
+| `environmentMap` | `string` | — | HDR/EXR environment map URL |
+| `environmentBackground` | `boolean` | `false` | Show environment map as scene background |
+| `toneMapping` | `string` | `'aces'` | `'none'`, `'linear'`, `'reinhard'`, `'aces'`, or `'filmic'` |
+| `toneMappingExposure` | `number` | `1.0` | Tone mapping exposure |
+| `draco` | `boolean` | `true` | Enable DRACO decoder for GLTF |
+| `dracoDecoderPath` | `string` | — | Custom DRACO decoder path |
+| `animation` | `number \| string` | — | Animation index or name to play on load |
+| `autoPlayAnimation` | `boolean` | `false` | Auto-play first animation on load |
+| `animationSpeed` | `number` | `1.0` | Animation playback speed |
+| `cameraPosition` | `[x, y, z]` | — | Custom initial camera position |
+| `cameraFov` | `number` | `45` | Camera field of view (degrees) |
+| `cameraTarget` | `[x, y, z]` | — | Custom camera look-at target |
+| `pixelRatio` | `number` | `2` | Max device pixel ratio |
+| `antialias` | `boolean` | `true` | Enable antialiasing |
+| `lighting` | `LightingConfig` | — | Custom lighting configuration |
 
-```js
-// Model loading
-viewer.loadModel(url)                    // Load a new model
+### Callbacks
+
+| Callback | Type | Description |
+|----------|------|-------------|
+| `onLoadStart` | `() => void` | Fired when model loading begins |
+| `onProgress` | `(progress: number) => void` | Loading progress (0-1) |
+| `onLoad` | `(instance) => void` | Fired when model is loaded and ready |
+| `onError` | `(error: Error) => void` | Fired on load error |
+| `onCameraChange` | `(position, target) => void` | Fired when camera moves |
+| `onFullscreenChange` | `(isFullscreen: boolean) => void` | Fired on fullscreen toggle |
+
+### Instance Methods
+
+```ts
+// Model
+instance.loadModel(src: string, mtlSrc?: string): Promise<void>
+instance.update(config: Partial<CI3DViewConfig>): void
+instance.destroy(): void
 
 // Camera
-viewer.setCameraPosition(x, y, z)       // Set camera position
-viewer.setCameraTarget(x, y, z)         // Set orbit target
-viewer.resetCamera()                    // Animated camera reset
-viewer.setAutoRotate(enabled)           // Toggle auto-rotation
+instance.setCameraPosition(x: number, y: number, z: number): void
+instance.setCameraTarget(x: number, y: number, z: number): void
+instance.resetCamera(): void
 
-// Screenshot
-viewer.screenshot(scale?)               // Returns data URL
-viewer.downloadScreenshot(filename?, scale?)
+// Auto-rotate
+instance.setAutoRotate(enabled: boolean): void
 
 // Animation
-viewer.playAnimation(indexOrName?)      // Play animation
-viewer.pauseAnimation()                 // Pause at current frame
-viewer.stopAnimation()                  // Stop and reset
-viewer.setAnimationSpeed(speed)         // Change playback speed
-viewer.getAnimations()                  // List animation names
+instance.playAnimation(indexOrName?: number | string): void
+instance.pauseAnimation(): void
+instance.stopAnimation(): void
+instance.setAnimationSpeed(speed: number): void
+instance.getAnimations(): string[]
+
+// Screenshot
+instance.screenshot(scale?: number): string       // Returns data URL
+instance.downloadScreenshot(filename?: string, scale?: number): void
 
 // Fullscreen
-viewer.enterFullscreen()
-viewer.exitFullscreen()
-viewer.isFullscreen()
+instance.enterFullscreen(): void
+instance.exitFullscreen(): void
+instance.isFullscreen(): boolean
 
-// Updates
-viewer.update(partialConfig)            // Update config without recreating
-viewer.destroy()                        // Clean up all resources
-
-// Internals
-viewer.getThreeObjects()                // { scene, camera, renderer, controls, model }
-viewer.getElements()                    // { container, canvas }
+// Three.js access
+instance.getThreeObjects(): { scene, camera, renderer, controls, model }
+instance.getElements(): { container, canvas }
 ```
 
 ### Static Methods
 
-```js
-CI3DView.autoInit(root?)               // Auto-discover data-ci-3d-src elements
+```ts
+CI3DView.autoInit(root?: HTMLElement): CI3DViewInstance[]
 ```
 
-### Callbacks
+## React Usage
 
-```js
-new CI3DView('#container', {
-  src: 'model.glb',
-  onLoadStart: () => {},
-  onLoad: (model) => {},
-  onLoadProgress: (progress) => {},
-  onError: (error) => {},
-});
-```
+```tsx
+import { CI3DViewer, useCI3DView } from 'js-cloudimage-3d-view/react';
 
-## React
-
-### Component
-
-```jsx
-import { CI3DViewer } from 'js-cloudimage-3d-view/react';
-
-function App() {
-  const ref = useRef(null);
-
+// Component
+function ModelViewer() {
   return (
     <CI3DViewer
-      ref={ref}
-      src="model.glb"
+      src="/model.glb"
       autoRotate
       shadows
-      theme="light"
-      style={{ width: '100%', aspectRatio: '16/9' }}
-      onLoad={() => console.log('Loaded!')}
+      theme="dark"
+      style={{ width: '100%', height: 500 }}
+      onLoad={(instance) => console.log('Loaded!', instance.getAnimations())}
     />
+  );
+}
+
+// Ref API
+function ModelViewer() {
+  const ref = useRef<CI3DViewerRef>(null);
+  return (
+    <>
+      <CI3DViewer ref={ref} src="/model.glb" shadows />
+      <button onClick={() => ref.current?.resetCamera()}>Reset</button>
+      <button onClick={() => ref.current?.downloadScreenshot()}>Screenshot</button>
+    </>
+  );
+}
+
+// Hook
+function ModelViewer() {
+  const { containerRef, instance, ready } = useCI3DView({
+    src: '/model.glb',
+    autoRotate: true,
+    shadows: true,
+  });
+
+  return (
+    <>
+      <div ref={containerRef} style={{ width: '100%', height: 500 }} />
+      {ready && <button onClick={() => instance.current?.resetCamera()}>Reset</button>}
+    </>
   );
 }
 ```
 
-### Hook
+## Lighting Configuration
 
-```jsx
-import { useCI3DView } from 'js-cloudimage-3d-view/react';
-
-function CustomViewer() {
-  const { containerRef, instance } = useCI3DView({
-    src: 'model.glb',
-    autoRotate: true,
-  });
-
-  return <div ref={containerRef} style={{ width: '100%', height: 400 }} />;
-}
-```
-
-### Ref API
-
-The `CI3DViewer` component exposes all instance methods via `ref`:
+Customize the 3-point lighting system:
 
 ```js
-ref.current.loadModel(url)
-ref.current.resetCamera()
-ref.current.screenshot()
-ref.current.playAnimation()
-ref.current.update({ shadows: false })
-ref.current.getThreeObjects()
-// ... all methods from the API reference
+new CI3DView('#el', {
+  src: '/model.glb',
+  lighting: {
+    ambientIntensity: 0.4,
+    ambientColor: '#ffffff',
+    keyLight: {
+      intensity: 1.0,
+      color: '#ffffff',
+      position: [5, 10, 7],
+      castShadow: true,
+    },
+    fillLight: {
+      intensity: 0.5,
+      position: [-5, 5, 5],
+    },
+    rimLight: {
+      intensity: 0.3,
+      position: [0, 5, -10],
+    },
+  },
+});
 ```
 
-## Theming
+## Environment Maps
 
-### CSS Variables
-
-Override the built-in CSS variables for custom styling:
-
-```css
-.ci-3d-container {
-  --ci3d-bg: #ffffff;
-  --ci3d-loading-bg: rgba(255, 255, 255, 0.9);
-  --ci3d-loading-spinner: #0058a3;
-  --ci3d-error-bg: rgba(255, 255, 255, 0.95);
-  --ci3d-error-color: #dc2626;
-  --ci3d-btn-bg: rgba(255, 255, 255, 0.9);
-  --ci3d-btn-color: #374151;
-  --ci3d-btn-hover-bg: rgba(255, 255, 255, 1);
-}
-```
-
-### Dark Theme
+Use HDR or EXR environment maps for realistic reflections:
 
 ```js
-new CI3DView('#container', { src: 'model.glb', theme: 'dark' });
+new CI3DView('#el', {
+  src: '/model.glb',
+  environmentMap: '/studio.hdr',
+  environmentBackground: true,
+  toneMapping: 'aces',
+  toneMappingExposure: 1.2,
+});
 ```
 
-Or with data attributes:
+## Data Attributes
+
+All config options can be set via HTML data attributes with the `data-ci-3d-` prefix:
 
 ```html
-<div data-ci-3d-src="model.glb" data-ci-3d-theme="dark"></div>
+<div
+  data-ci-3d-src="/model.glb"
+  data-ci-3d-auto-rotate
+  data-ci-3d-auto-rotate-speed="1.0"
+  data-ci-3d-shadows
+  data-ci-3d-shadow-opacity="0.5"
+  data-ci-3d-theme="dark"
+  data-ci-3d-background="#1a1a1a"
+  data-ci-3d-environment-map="/studio.hdr"
+  data-ci-3d-tone-mapping="aces"
+  data-ci-3d-camera-position="[0, 2, 5]"
+  data-ci-3d-auto-play-animation
+  data-ci-3d-animation-speed="0.5"
+  data-ci-3d-scroll-to-zoom
+  style="width: 100%; height: 500px;"
+></div>
 ```
+
+Boolean attributes are `true` when present (empty value), or accept `"true"`, `"1"`, `"yes"`.
 
 ## Accessibility
 
-- **Keyboard Navigation:** Arrow keys (orbit), +/- (zoom), 0 (reset), R (auto-rotate), F (fullscreen), Space (animation toggle), Escape (exit fullscreen)
-- **ARIA Attributes:** `role="application"`, `aria-roledescription="3D viewer"`, `aria-label`, `aria-live` for loading states
-- **Focus Management:** Visible focus outlines, tab-navigable controls
-- **Reduced Motion:** Respects `prefers-reduced-motion` — disables auto-rotate, instant camera transitions
-
-## TypeScript
-
-Full type definitions are included:
-
-```ts
-import { CI3DView } from 'js-cloudimage-3d-view';
-import type {
-  CI3DViewConfig,
-  CI3DViewInstance,
-  LightingConfig,
-  ToneMappingMode,
-} from 'js-cloudimage-3d-view';
-
-// React types
-import type {
-  CI3DViewerProps,
-  CI3DViewerRef,
-} from 'js-cloudimage-3d-view/react';
-```
+- All interactive elements are keyboard-navigable
+- `Arrow keys` rotate the model
+- `+` / `-` zoom in/out
+- `0` resets camera
+- `R` toggles auto-rotate
+- `F` toggles fullscreen
+- `Space` toggles animation playback
+- `Escape` exits fullscreen
+- `Tab` / `Shift+Tab` navigates toolbar buttons
+- `role="application"` with `aria-describedby` keyboard instructions
+- `aria-label` on all buttons, `aria-pressed` on toggles
+- Progress bar with `role="progressbar"` and `aria-valuenow`
+- `prefers-reduced-motion` disables auto-rotate and uses instant transitions
 
 ## Browser Support
 
 | Browser | Version |
 |---------|---------|
-| Chrome | 90+ |
-| Firefox | 90+ |
-| Safari | 15+ |
-| Edge | 90+ |
+| Chrome  | 80+     |
+| Firefox | 80+     |
+| Safari  | 14+     |
+| Edge    | 80+     |
 
 Requires WebGL 2.0 support.
 
 ## License
 
-[MIT](LICENSE) - Scaleflex
+[MIT](./LICENSE)
+
+---
+
+## Support
+
+If this library helped your project, consider buying me a coffee!
+
+<a href="https://buymeacoffee.com/dzmitry.stramavus">
+  <img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black" alt="Buy Me A Coffee">
+</a>
+
+---
+
+<p align="center">
+  Made with care by the <a href="https://www.scaleflex.com">Scaleflex</a> team
+</p>
