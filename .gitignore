@@ -1,4 +1,5 @@
-dist/
+dist/*
+!dist/js-cloudimage-3d-view.min.js
 dist-demo/
 node_modules/
 coverage/
