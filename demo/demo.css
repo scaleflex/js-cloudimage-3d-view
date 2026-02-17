@@ -1113,7 +1113,8 @@ body {
 /* Containers that hold a placeholder need relative positioning */
 .viewer-card__viewer,
 .demo-panel__viewer,
-.configurator__viewer {
+.configurator__viewer,
+#hero-viewer {
   position: relative;
 }
 

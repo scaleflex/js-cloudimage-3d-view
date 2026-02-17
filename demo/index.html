@@ -54,16 +54,25 @@
       <div class="demo-hero-viewer">
         <div
           id="hero-viewer"
-          data-ci-3d-src="https://fbmjmuoeb.filerobot.com/3D%20Models/colored.stl?vh=0975df&func=proxy"
-          data-ci-3d-auto-rotate="true"
-          data-ci-3d-auto-rotate-speed="0.3"
-          data-ci-3d-shadows="true"
-          data-ci-3d-tone-mapping="aces"
-          data-ci-3d-background="#ffffff"
-          data-ci-3d-screenshot-button="true"
-          data-ci-3d-background-toggle-button="true"
-          data-ci-3d-alt="3D model"
-        ></div>
+          data-ci-3d-lazy-src="https://fbmjmuoeb.filerobot.com/3D%20Models/colored.stl?vh=0975df&func=proxy"
+          data-ci-3d-lazy-auto-rotate="true"
+          data-ci-3d-lazy-auto-rotate-speed="0.3"
+          data-ci-3d-lazy-shadows="true"
+          data-ci-3d-lazy-tone-mapping="aces"
+          data-ci-3d-lazy-background="#ffffff"
+          data-ci-3d-lazy-screenshot-button="true"
+          data-ci-3d-lazy-background-toggle-button="true"
+          data-ci-3d-lazy-alt="3D model"
+        >
+          <div class="viewer-placeholder" data-preview="./previews/preview-stl.png">
+            <div class="viewer-placeholder__scrim">
+              <div class="viewer-placeholder__content">
+                <svg class="viewer-placeholder__icon" viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg"><ellipse cx="48" cy="52" rx="38" ry="12" stroke="currentColor" stroke-width="1" stroke-dasharray="3 2.5" opacity="0.25"/><path d="M48 22L74 37L48 52L22 37Z" fill="currentColor" fill-opacity="0.07" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M22 37L48 52V76L22 61Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M48 52L74 37V61L48 76Z" fill="currentColor" fill-opacity="0.18" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><polyline points="82 48 86 40 90 47" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.4"/></svg>
+                <span class="viewer-placeholder__text">View</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
       <div class="demo-hero-meta">
         <span>Three.js</span>

@@ -32,6 +32,9 @@ import { createToolbar, type ToolbarHandle } from '../ui/toolbar';
 import CSS_STRING from '../styles/index.css?inline';
 
 export class CI3DView implements CI3DViewInstance {
+  /** Tracks the active instance per container element for automatic cleanup. */
+  private static instances = new Map<HTMLElement, CI3DView>();
+
   private container: HTMLElement;
   private config: CI3DViewConfig;
   private canvas!: HTMLCanvasElement;
@@ -79,6 +82,14 @@ export class CI3DView implements CI3DViewInstance {
     config: Partial<CI3DViewConfig> = {},
   ) {
     this.container = getElement(element);
+
+    // Destroy any existing instance on this container to prevent resource accumulation
+    const existing = CI3DView.instances.get(this.container);
+    if (existing) {
+      existing.destroy();
+    }
+    CI3DView.instances.set(this.container, this);
+
     this.config = mergeConfig(config);
 
     // Validate
@@ -388,6 +399,11 @@ export class CI3DView implements CI3DViewInstance {
   destroy(): void {
     if (this.destroyed) return;
     this.destroyed = true;
+
+    // Remove from instance registry
+    if (CI3DView.instances.get(this.container) === this) {
+      CI3DView.instances.delete(this.container);
+    }
 
     // Cancel any pending camera reset animation
     this.cameraResetHandle?.cancel();

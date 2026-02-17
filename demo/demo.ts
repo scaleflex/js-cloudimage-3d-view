@@ -1,6 +1,6 @@
 import { CI3DView } from '../src/core/ci-3d-view';
 import { parseDataAttributes } from '../src/core/config';
-import { initConfigurator } from './configurator';
+import { initConfigurator, destroyConfigurator } from './configurator';
 
 // ===== Helpers =====
 
@@ -36,39 +36,124 @@ function enableControls(container: HTMLElement): void {
   });
 }
 
-// ===== Apply saved preview images to placeholders =====
-document.querySelectorAll<HTMLElement>('.viewer-placeholder[data-preview]').forEach((ph) => {
-  const src = ph.dataset.preview;
-  if (src) {
-    ph.style.backgroundImage = `url(${src})`;
+/** Disable all input/select/button controls inside a container. */
+function disableControls(container: HTMLElement): void {
+  container.querySelectorAll<HTMLElement>('input, select, button').forEach((ctrl) => {
+    ctrl.setAttribute('disabled', '');
+  });
+}
+
+// ===== Viewer Manager: only one active 3D viewer at a time =====
+
+/** Saved placeholder outerHTML for each container, captured before any viewer activates. */
+const savedPlaceholders = new Map<HTMLElement, string>();
+
+interface ViewerEntry {
+  init: () => void;
+  active: boolean;
+  cleanup?: () => void;
+}
+
+const registry = new Map<HTMLElement, ViewerEntry>();
+
+// Save all placeholder HTML upfront and apply preview background images.
+document.querySelectorAll<HTMLElement>('.viewer-placeholder').forEach((ph) => {
+  const container = ph.parentElement;
+  if (container) {
+    savedPlaceholders.set(container, ph.outerHTML);
+    if (ph.dataset.preview) {
+      ph.style.backgroundImage = `url(${ph.dataset.preview})`;
+    }
   }
 });
 
-// ===== Auto-init viewers with data attributes (hero only now) =====
-CI3DView.autoInit();
+/** Register a viewer container with its initialization function. */
+function registerViewer(container: HTMLElement, init: () => void): void {
+  registry.set(container, { init, active: false });
+  const placeholder = container.querySelector('.viewer-placeholder');
+  placeholder?.addEventListener('click', () => activateViewer(container), { once: true });
+}
 
-// ===== Lazy-init format card viewers =====
+/** Store a cleanup function that will be called when the viewer is deactivated. */
+function setCleanup(container: HTMLElement, cleanup: () => void): void {
+  const entry = registry.get(container);
+  if (entry) entry.cleanup = cleanup;
+}
+
+/** Activate a viewer, deactivating all others first. */
+function activateViewer(container: HTMLElement): void {
+  const entry = registry.get(container);
+  if (!entry || entry.active) return;
+
+  // Deactivate all other active viewers
+  for (const [otherContainer, other] of registry) {
+    if (otherContainer === container || !other.active) continue;
+    other.cleanup?.();
+    other.active = false;
+    other.cleanup = undefined;
+    restorePlaceholder(otherContainer);
+  }
+
+  // Activate this one
+  removePlaceholder(container);
+  entry.init();
+  entry.active = true;
+}
+
+/** Restore a placeholder to a container after its viewer was destroyed. */
+function restorePlaceholder(container: HTMLElement): void {
+  const html = savedPlaceholders.get(container);
+  if (!html) return;
+
+  // Clean up any leftover DOM from the destroyed viewer
+  container.replaceChildren();
+
+  container.insertAdjacentHTML('beforeend', html);
+  const ph = container.querySelector('.viewer-placeholder') as HTMLElement;
+  if (ph?.dataset.preview) {
+    ph.style.backgroundImage = `url(${ph.dataset.preview})`;
+  }
+  ph?.addEventListener('click', () => activateViewer(container), { once: true });
+}
+
+// ===== Hero Viewer =====
+const heroEl = document.getElementById('hero-viewer');
+if (heroEl) {
+  registerViewer(heroEl, () => {
+    promoteLazyAttributes(heroEl);
+    const config = parseDataAttributes(heroEl);
+    const instance = new CI3DView(heroEl, config);
+    setCleanup(heroEl, () => instance.destroy());
+  });
+
+  // Auto-activate hero on page load
+  activateViewer(heroEl);
+}
+
+// ===== Format Card Viewers =====
 document.querySelectorAll<HTMLElement>('[data-ci-3d-lazy-src]').forEach((el) => {
-  const placeholder = el.querySelector('.viewer-placeholder');
-  if (!placeholder) return;
+  if (el.id === 'hero-viewer') return; // Already registered above
 
-  placeholder.addEventListener('click', () => {
-    removePlaceholder(el);
+  registerViewer(el, () => {
     promoteLazyAttributes(el);
     const config = parseDataAttributes(el);
-    new CI3DView(el, config);
-  }, { once: true });
+    const instance = new CI3DView(el, config);
+    setCleanup(el, () => instance.destroy());
+  });
 });
 
 // ===== Lighting Demo =====
-let lightingInstance: InstanceType<typeof CI3DView> | null = null;
+let lightingInstance: CI3DView | null = null;
+let lightingListenersAttached = false;
 const lightingContainer = document.getElementById('lighting-viewer');
 if (lightingContainer) {
-  const lightingPlaceholder = lightingContainer.querySelector('.viewer-placeholder');
+  const shadowsCtrl = document.getElementById('ctrl-shadows') as HTMLInputElement;
+  const tonemapCtrl = document.getElementById('ctrl-tonemapping') as HTMLSelectElement;
+  const exposureCtrl = document.getElementById('ctrl-exposure') as HTMLInputElement;
+  const exposureVal = document.getElementById('ctrl-exposure-val');
+  const themeCtrl = document.getElementById('ctrl-lighting-theme') as HTMLSelectElement;
 
-  const initLighting = () => {
-    removePlaceholder(lightingContainer);
-
+  registerViewer(lightingContainer, () => {
     lightingInstance = new CI3DView(lightingContainer, {
       src: 'https://fbmjmuoeb.filerobot.com/3D%20Models/colored.stl?vh=0975df&func=proxy',
       autoRotate: true,
@@ -79,51 +164,49 @@ if (lightingContainer) {
       onError: (err) => console.error('[Lighting]', err),
     });
 
-    // Enable sidebar controls
     const controlsPanel = lightingContainer.closest('.demo-panel')?.querySelector('.demo-panel__controls');
     if (controlsPanel) enableControls(controlsPanel as HTMLElement);
 
-    const shadowsCtrl = document.getElementById('ctrl-shadows') as HTMLInputElement;
-    const tonemapCtrl = document.getElementById('ctrl-tonemapping') as HTMLSelectElement;
-    const exposureCtrl = document.getElementById('ctrl-exposure') as HTMLInputElement;
-    const exposureVal = document.getElementById('ctrl-exposure-val');
-    const themeCtrl = document.getElementById('ctrl-lighting-theme') as HTMLSelectElement;
+    if (!lightingListenersAttached) {
+      lightingListenersAttached = true;
 
-    shadowsCtrl?.addEventListener('change', () => {
-      lightingInstance?.update({ shadows: shadowsCtrl.checked });
+      shadowsCtrl?.addEventListener('change', () => {
+        lightingInstance?.update({ shadows: shadowsCtrl.checked });
+      });
+
+      tonemapCtrl?.addEventListener('change', () => {
+        lightingInstance?.update({ toneMapping: tonemapCtrl.value as any });
+      });
+
+      exposureCtrl?.addEventListener('input', () => {
+        const val = parseFloat(exposureCtrl.value);
+        if (exposureVal) exposureVal.textContent = val.toFixed(1);
+        lightingInstance?.update({ toneMappingExposure: val });
+      });
+
+      themeCtrl?.addEventListener('change', () => {
+        lightingInstance?.update({ theme: themeCtrl.value as any });
+      });
+    }
+
+    setCleanup(lightingContainer, () => {
+      lightingInstance?.destroy();
+      lightingInstance = null;
+      const controlsPanel = lightingContainer.closest('.demo-panel')?.querySelector('.demo-panel__controls');
+      if (controlsPanel) disableControls(controlsPanel as HTMLElement);
     });
-
-    tonemapCtrl?.addEventListener('change', () => {
-      lightingInstance?.update({ toneMapping: tonemapCtrl.value as any });
-    });
-
-    exposureCtrl?.addEventListener('input', () => {
-      const val = parseFloat(exposureCtrl.value);
-      if (exposureVal) exposureVal.textContent = val.toFixed(1);
-      lightingInstance?.update({ toneMappingExposure: val });
-    });
-
-    themeCtrl?.addEventListener('change', () => {
-      lightingInstance?.update({ theme: themeCtrl.value as any });
-    });
-  };
-
-  if (lightingPlaceholder) {
-    lightingPlaceholder.addEventListener('click', initLighting, { once: true });
-  } else {
-    initLighting();
-  }
+  });
 }
 
 // ===== Animation Demo =====
-let animInstance: InstanceType<typeof CI3DView> | null = null;
+let animInstance: CI3DView | null = null;
+let animListenersAttached = false;
 const animContainer = document.getElementById('animation-viewer');
 if (animContainer) {
-  const animPlaceholder = animContainer.querySelector('.viewer-placeholder');
+  const speedCtrl = document.getElementById('anim-speed') as HTMLInputElement;
+  const speedVal = document.getElementById('anim-speed-val');
 
-  const initAnimation = () => {
-    removePlaceholder(animContainer);
-
+  registerViewer(animContainer, () => {
     animInstance = new CI3DView(animContainer, {
       src: 'https://fbmjmuoeb.filerobot.com/3D%20Models/Samba%20Dancing.fbx?vh=4ad183&func=proxy',
       autoPlayAnimation: true,
@@ -134,53 +217,47 @@ if (animContainer) {
       onError: (err) => console.error('[Animation]', err),
     });
 
-    // Enable sidebar controls
     const controlsPanel = animContainer.closest('.demo-panel')?.querySelector('.demo-panel__controls');
     if (controlsPanel) enableControls(controlsPanel as HTMLElement);
 
-    document.getElementById('anim-play')?.addEventListener('click', () => {
-      animInstance?.playAnimation();
-    });
+    if (!animListenersAttached) {
+      animListenersAttached = true;
 
-    document.getElementById('anim-pause')?.addEventListener('click', () => {
-      animInstance?.pauseAnimation();
-    });
+      document.getElementById('anim-play')?.addEventListener('click', () => {
+        animInstance?.playAnimation();
+      });
 
-    document.getElementById('anim-stop')?.addEventListener('click', () => {
-      animInstance?.stopAnimation();
-    });
+      document.getElementById('anim-pause')?.addEventListener('click', () => {
+        animInstance?.pauseAnimation();
+      });
 
-    const speedCtrl = document.getElementById('anim-speed') as HTMLInputElement;
-    const speedVal = document.getElementById('anim-speed-val');
-    speedCtrl?.addEventListener('input', () => {
-      const val = parseFloat(speedCtrl.value);
-      if (speedVal) speedVal.textContent = `${val.toFixed(1)}x`;
-      animInstance?.setAnimationSpeed(val);
-    });
-  };
+      document.getElementById('anim-stop')?.addEventListener('click', () => {
+        animInstance?.stopAnimation();
+      });
 
-  if (animPlaceholder) {
-    animPlaceholder.addEventListener('click', initAnimation, { once: true });
-  } else {
-    initAnimation();
-  }
+      speedCtrl?.addEventListener('input', () => {
+        const val = parseFloat(speedCtrl.value);
+        if (speedVal) speedVal.textContent = `${val.toFixed(1)}x`;
+        animInstance?.setAnimationSpeed(val);
+      });
+    }
+
+    setCleanup(animContainer, () => {
+      animInstance?.destroy();
+      animInstance = null;
+      const controlsPanel = animContainer.closest('.demo-panel')?.querySelector('.demo-panel__controls');
+      if (controlsPanel) disableControls(controlsPanel as HTMLElement);
+    });
+  });
 }
 
 // ===== Interactive Configurator =====
 const configuratorContainer = document.getElementById('configurator-viewer');
 if (configuratorContainer) {
-  const configPlaceholder = configuratorContainer.querySelector('.viewer-placeholder');
-
-  const initConfig = () => {
-    removePlaceholder(configuratorContainer);
+  registerViewer(configuratorContainer, () => {
     initConfigurator(configuratorContainer);
-  };
-
-  if (configPlaceholder) {
-    configPlaceholder.addEventListener('click', initConfig, { once: true });
-  } else {
-    initConfig();
-  }
+    setCleanup(configuratorContainer, () => destroyConfigurator());
+  });
 }
 
 // ===== Burger Menu =====
