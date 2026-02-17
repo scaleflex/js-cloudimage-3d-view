@@ -72,8 +72,8 @@ describe('Edge cases', () => {
     expect(errors.some((e) => e.includes('toneMapping'))).toBe(true);
   });
 
-  it('handles unsupported format gracefully', () => {
-    const loader = getLoader('model.dwg');
+  it('handles unsupported format gracefully', async () => {
+    const loader = await getLoader('model.dwg');
     expect(loader).toBeNull();
   });
 

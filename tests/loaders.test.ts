@@ -101,51 +101,51 @@ describe('detectFormat', () => {
 });
 
 describe('getLoader', () => {
-  it('returns GLTF loader for .glb', () => {
-    const loader = getLoader('model.glb');
+  it('returns GLTF loader for .glb', async () => {
+    const loader = await getLoader('model.glb');
     expect(loader).toBeTruthy();
     expect(loader!.extensions).toContain('.glb');
   });
 
-  it('returns GLTF loader for .gltf', () => {
-    const loader = getLoader('model.gltf');
+  it('returns GLTF loader for .gltf', async () => {
+    const loader = await getLoader('model.gltf');
     expect(loader).toBeTruthy();
     expect(loader!.extensions).toContain('.gltf');
   });
 
-  it('returns OBJ loader for .obj', () => {
-    const loader = getLoader('model.obj');
+  it('returns OBJ loader for .obj', async () => {
+    const loader = await getLoader('model.obj');
     expect(loader).toBeTruthy();
     expect(loader!.extensions).toContain('.obj');
   });
 
-  it('returns default GLTF loader for unknown extension', () => {
-    const loader = getLoader('https://cdn.com/model');
+  it('returns default GLTF loader for unknown extension', async () => {
+    const loader = await getLoader('https://cdn.com/model');
     expect(loader).toBeTruthy();
     expect(loader!.extensions).toContain('.glb');
   });
 
-  it('returns STL loader for .stl', () => {
-    const loader = getLoader('part.stl');
+  it('returns STL loader for .stl', async () => {
+    const loader = await getLoader('part.stl');
     expect(loader).toBeTruthy();
     expect(loader!.extensions).toContain('.stl');
   });
 
-  it('returns FBX loader for .fbx', () => {
-    const loader = getLoader('character.fbx');
+  it('returns FBX loader for .fbx', async () => {
+    const loader = await getLoader('character.fbx');
     expect(loader).toBeTruthy();
     expect(loader!.extensions).toContain('.fbx');
   });
 
-  it('returns null for unsupported extension', () => {
-    const loader = getLoader('model.dwg');
+  it('returns null for unsupported extension', async () => {
+    const loader = await getLoader('model.dwg');
     expect(loader).toBeNull();
   });
 });
 
 describe('GLTFFormatLoader', () => {
   it('loads a GLB file and returns model + animations', async () => {
-    const loader = getLoader('model.glb')!;
+    const loader = (await getLoader('model.glb'))!;
     const result = await loader.load('model.glb', { draco: true });
 
     expect(result.model).toBeTruthy();
@@ -155,7 +155,7 @@ describe('GLTFFormatLoader', () => {
 
   it('configures DRACOLoader when draco enabled', async () => {
     const { DRACOLoader } = await import('three/addons/loaders/DRACOLoader.js');
-    const loader = getLoader('model.glb')!;
+    const loader = (await getLoader('model.glb'))!;
     await loader.load('model.glb', { draco: true });
 
     expect(DRACOLoader).toHaveBeenCalled();
@@ -164,7 +164,7 @@ describe('GLTFFormatLoader', () => {
 
 describe('OBJFormatLoader', () => {
   it('loads an OBJ file', async () => {
-    const loader = getLoader('model.obj')!;
+    const loader = (await getLoader('model.obj'))!;
     const result = await loader.load('model.obj', {});
 
     expect(result.model).toBeTruthy();
@@ -174,7 +174,7 @@ describe('OBJFormatLoader', () => {
 
 describe('STLFormatLoader', () => {
   it('loads an STL file and wraps geometry in a Group', async () => {
-    const loader = getLoader('part.stl')!;
+    const loader = (await getLoader('part.stl'))!;
     const result = await loader.load('part.stl', {});
 
     expect(result.model).toBeTruthy();
@@ -185,7 +185,7 @@ describe('STLFormatLoader', () => {
 
 describe('FBXFormatLoader', () => {
   it('loads an FBX file and returns model + animations', async () => {
-    const loader = getLoader('character.fbx')!;
+    const loader = (await getLoader('character.fbx'))!;
     const result = await loader.load('character.fbx', {});
 
     expect(result.model).toBeTruthy();

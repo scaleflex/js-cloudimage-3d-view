@@ -693,7 +693,7 @@ export class CI3DView implements CI3DViewInstance {
   private async loadModelInternal(src: string, mtlSrc?: string): Promise<void> {
     const generation = ++this.loadGeneration;
 
-    const loader = getLoader(src);
+    const loader = await getLoader(src);
     if (!loader) {
       this.showError(`Unsupported model format: ${src}`);
       this.config.onError?.(new Error(`Unsupported model format: ${src}`));

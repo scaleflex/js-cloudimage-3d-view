@@ -14,23 +14,34 @@ export default defineConfig({
   build: {
     lib: {
       entry: resolve(__dirname, '../src/index.ts'),
-      name: 'CI3DView',
-      formats: ['es', 'cjs', 'umd'],
-      fileName: (format) => {
-        if (format === 'es') return 'js-cloudimage-3d-view.esm.js';
-        if (format === 'cjs') return 'js-cloudimage-3d-view.cjs.js';
-        return 'js-cloudimage-3d-view.min.js';
-      },
     },
     rollupOptions: {
       external: ['three', /^three\/.*/],
-      output: {
-        exports: 'named',
-        globals: (id: string) => {
-          if (id === 'three' || id.startsWith('three/')) return 'THREE';
-          return id;
+      output: [
+        {
+          format: 'es',
+          entryFileNames: 'js-cloudimage-3d-view.esm.js',
+          chunkFileNames: 'chunks/[name].js',
+          exports: 'named',
         },
-      },
+        {
+          format: 'cjs',
+          entryFileNames: 'js-cloudimage-3d-view.cjs.js',
+          inlineDynamicImports: true,
+          exports: 'named',
+        },
+        {
+          format: 'umd',
+          entryFileNames: 'js-cloudimage-3d-view.min.js',
+          inlineDynamicImports: true,
+          name: 'CI3DView',
+          exports: 'named',
+          globals: (id: string) => {
+            if (id === 'three' || id.startsWith('three/')) return 'THREE';
+            return id;
+          },
+        },
+      ],
     },
     sourcemap: true,
     minify: 'esbuild',
