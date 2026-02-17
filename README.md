@@ -68,7 +68,7 @@ npm install js-cloudimage-3d-view three
 
 ```html
 <script src="https://unpkg.com/three/build/three.min.js"></script>
-<script src="https://scaleflex.cloudimg.io/v7/plugins/js-cloudimage-3d-view/1.0.0/js-cloudimage-3d-view.min.js?vh=59c621&func=proxy"></script>
+<script src="https://scaleflex.cloudimg.io/v7/plugins/js-cloudimage-3d-view/1.0.1/js-cloudimage-3d-view.min.js?vh=114f86&func=proxy"></script>
 ```
 
 ## Quick Start
