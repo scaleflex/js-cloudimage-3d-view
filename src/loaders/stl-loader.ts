@@ -1,4 +1,5 @@
 import { STLLoader } from 'three/addons/loaders/STLLoader.js';
+import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { Mesh, MeshStandardMaterial, Group } from 'three';
 import type { FormatLoader, LoadResult, LoaderOptions } from '../core/types';
 
@@ -16,16 +17,20 @@ export class STLFormatLoader implements FormatLoader {
       loader.load(
         url,
         (geometry) => {
-          geometry.computeVertexNormals();
+          // Merge coincident vertices so computeVertexNormals produces
+          // smooth (averaged) normals instead of per-face flat normals.
+          const merged = mergeVertices(geometry);
+          merged.computeVertexNormals();
 
-          const hasVertexColors = !!geometry.getAttribute('color');
+          const hasVertexColors = !!merged.getAttribute('color');
           const material = new MeshStandardMaterial({
             color: hasVertexColors ? 0xffffff : 0x808080,
             vertexColors: hasVertexColors,
             roughness: 0.5,
             metalness: 0.3,
+            flatShading: false,
           });
-          const mesh = new Mesh(geometry, material);
+          const mesh = new Mesh(merged, material);
           const group = new Group();
           group.add(mesh);
 

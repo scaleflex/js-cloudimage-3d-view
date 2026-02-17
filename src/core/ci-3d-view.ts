@@ -352,6 +352,15 @@ export class CI3DView implements CI3DViewInstance {
       (this.groundPlane.material as any).opacity = config.shadowOpacity;
     }
 
+    // Apply shadow blur change
+    if (config.shadowBlur !== undefined && this.lights) {
+      for (const light of [this.lights.key, this.lights.fill, this.lights.rim]) {
+        if (light.castShadow) {
+          light.shadow.radius = config.shadowBlur;
+        }
+      }
+    }
+
     // Apply auto-rotate change
     if (config.autoRotate !== undefined) {
       this.setAutoRotate(config.autoRotate);
@@ -750,7 +759,7 @@ export class CI3DView implements CI3DViewInstance {
 
       // Adapt shadow frustum to model size
       if (this.lights) {
-        updateShadowFrustum(this.lights, sphere.radius);
+        updateShadowFrustum(this.lights, sphere.radius, this.config.shadowBlur);
       }
 
       // Fit camera if no custom position set

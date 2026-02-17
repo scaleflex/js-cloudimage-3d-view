@@ -117,17 +117,21 @@ export function reduceLightingForIBL(lights: LightingRig): void {
   lights.rim.intensity = lights.originalIntensities.rim * 0.5;
 }
 
-export function updateShadowFrustum(lights: LightingRig, modelRadius: number): void {
+export function updateShadowFrustum(lights: LightingRig, modelRadius: number, shadowBlur?: number): void {
   const extent = Math.max(modelRadius * 2, 1);
-  const far = extent * 5;
   for (const light of [lights.key, lights.fill, lights.rim]) {
     if (light.castShadow) {
-      light.shadow.camera.near = 0.1;
-      light.shadow.camera.far = far;
+      const lightDistance = light.position.length();
+      light.shadow.camera.near = Math.max(lightDistance - extent * 2, 0.1);
+      light.shadow.camera.far = lightDistance + extent * 2;
       light.shadow.camera.left = -extent;
       light.shadow.camera.right = extent;
       light.shadow.camera.top = extent;
       light.shadow.camera.bottom = -extent;
+      light.shadow.bias = -0.001;
+      if (shadowBlur !== undefined) {
+        light.shadow.radius = shadowBlur;
+      }
       light.shadow.camera.updateProjectionMatrix();
     }
   }

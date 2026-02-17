@@ -41,8 +41,11 @@ vi.mock('three/addons/loaders/MTLLoader.js', () => ({
 vi.mock('three/addons/loaders/STLLoader.js', () => ({
   STLLoader: vi.fn().mockImplementation(() => ({
     load: vi.fn((url, onLoad) => {
-      const { BufferGeometry } = require('three');
-      onLoad(new BufferGeometry());
+      const { BufferGeometry, Float32BufferAttribute } = require('three');
+      const geom = new BufferGeometry();
+      // Provide position data so mergeVertices can operate
+      geom.setAttribute('position', new Float32BufferAttribute([0, 0, 0, 1, 0, 0, 0, 1, 0], 3));
+      onLoad(geom);
     }),
   })),
 }));
