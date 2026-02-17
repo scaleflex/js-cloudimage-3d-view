@@ -1,0 +1,415 @@
+/* === Container === */
+.ci-3d-container {
+  --ci-3d-container-bg: transparent;
+  --ci-3d-container-border-radius: 0;
+
+  --ci-3d-progress-bar-height: 4px;
+  --ci-3d-progress-bar-bg: rgba(0, 0, 0, 0.1);
+  --ci-3d-progress-bar-fill: #0058a3;
+  --ci-3d-progress-bar-border-radius: 2px;
+
+  --ci-3d-loading-bg: rgba(255, 255, 255, 0.9);
+  --ci-3d-loading-color: #333333;
+  --ci-3d-loading-font-family: inherit;
+  --ci-3d-loading-font-size: 14px;
+  --ci-3d-loading-spinner-size: 40px;
+  --ci-3d-loading-spinner-color: #0058a3;
+  --ci-3d-loading-spinner-width: 3px;
+
+  --ci-3d-error-bg: rgba(255, 255, 255, 0.95);
+  --ci-3d-error-color: #cc0000;
+  --ci-3d-error-font-size: 14px;
+  --ci-3d-error-icon-size: 48px;
+  --ci-3d-error-retry-bg: #0058a3;
+  --ci-3d-error-retry-color: #ffffff;
+  --ci-3d-error-retry-border-radius: 8px;
+  --ci-3d-error-retry-padding: 8px 16px;
+
+  --ci-3d-controls-bg: rgba(255, 255, 255, 0.9);
+  --ci-3d-controls-color: #333333;
+  --ci-3d-controls-border-radius: 8px;
+  --ci-3d-controls-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  --ci-3d-controls-size: 36px;
+  --ci-3d-controls-gap: 8px;
+
+  --ci-3d-fullscreen-btn-position-top: 12px;
+  --ci-3d-fullscreen-btn-position-right: 12px;
+
+  --ci-3d-animation-controls-bg: rgba(255, 255, 255, 0.9);
+  --ci-3d-animation-controls-color: #333333;
+  --ci-3d-animation-controls-border-radius: 8px;
+  --ci-3d-animation-controls-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+
+  --ci-3d-transition-duration: 300ms;
+  --ci-3d-transition-timing: ease;
+
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+  background: var(--ci-3d-container-bg);
+  border-radius: var(--ci-3d-container-border-radius);
+}
+
+/* === Canvas === */
+.ci-3d-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  outline: none;
+  cursor: grab;
+}
+
+.ci-3d-canvas:active {
+  cursor: grabbing;
+}
+
+/* === Loading Overlay === */
+.ci-3d-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: var(--ci-3d-loading-bg);
+  z-index: 10;
+  transition: opacity var(--ci-3d-transition-duration) var(--ci-3d-transition-timing);
+}
+
+.ci-3d-loading--hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ci-3d-loading-spinner {
+  width: var(--ci-3d-loading-spinner-size);
+  height: var(--ci-3d-loading-spinner-size);
+  border: var(--ci-3d-loading-spinner-width) solid rgba(0, 0, 0, 0.1);
+  border-top-color: var(--ci-3d-loading-spinner-color);
+  border-radius: 50%;
+  animation: ci-3d-spin 0.8s linear infinite;
+}
+
+@keyframes ci-3d-spin {
+  to { transform: rotate(360deg); }
+}
+
+.ci-3d-loading-text {
+  font-family: var(--ci-3d-loading-font-family);
+  font-size: var(--ci-3d-loading-font-size);
+  color: var(--ci-3d-loading-color);
+}
+
+.ci-3d-progress-bar {
+  width: 60%;
+  max-width: 200px;
+  height: var(--ci-3d-progress-bar-height);
+  background: var(--ci-3d-progress-bar-bg);
+  border-radius: var(--ci-3d-progress-bar-border-radius);
+  overflow: hidden;
+}
+
+.ci-3d-progress-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--ci-3d-progress-bar-fill);
+  border-radius: var(--ci-3d-progress-bar-border-radius);
+  transition: width 0.2s ease;
+}
+
+/* === Error Overlay === */
+.ci-3d-error {
+  position: absolute;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: var(--ci-3d-error-bg);
+  z-index: 10;
+}
+
+.ci-3d-error--visible {
+  display: flex;
+}
+
+.ci-3d-error--hidden {
+  display: none;
+}
+
+.ci-3d-error-icon {
+  width: var(--ci-3d-error-icon-size);
+  height: var(--ci-3d-error-icon-size);
+  color: var(--ci-3d-error-color);
+}
+
+.ci-3d-error-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.ci-3d-error-message {
+  font-size: var(--ci-3d-error-font-size);
+  color: var(--ci-3d-error-color);
+  text-align: center;
+  max-width: 80%;
+}
+
+.ci-3d-error-retry {
+  background: var(--ci-3d-error-retry-bg);
+  color: var(--ci-3d-error-retry-color);
+  border: none;
+  border-radius: var(--ci-3d-error-retry-border-radius);
+  padding: var(--ci-3d-error-retry-padding);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: opacity var(--ci-3d-transition-duration) var(--ci-3d-transition-timing);
+}
+
+.ci-3d-error-retry:hover {
+  opacity: 0.9;
+}
+
+/* === Controls (fullscreen, screenshot) === */
+.ci-3d-controls {
+  position: absolute;
+  top: var(--ci-3d-fullscreen-btn-position-top);
+  right: var(--ci-3d-fullscreen-btn-position-right);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ci-3d-controls-gap);
+  z-index: 5;
+}
+
+.ci-3d-controls button {
+  width: var(--ci-3d-controls-size);
+  height: var(--ci-3d-controls-size);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ci-3d-controls-bg);
+  color: var(--ci-3d-controls-color);
+  border: none;
+  border-radius: var(--ci-3d-controls-border-radius);
+  box-shadow: var(--ci-3d-controls-shadow);
+  cursor: pointer;
+  padding: 0;
+  transition: opacity var(--ci-3d-transition-duration) var(--ci-3d-transition-timing);
+}
+
+.ci-3d-controls button:hover {
+  opacity: 0.8;
+}
+
+.ci-3d-controls button svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* === Animation Controls === */
+.ci-3d-animation-controls {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: var(--ci-3d-animation-controls-bg);
+  color: var(--ci-3d-animation-controls-color);
+  border-radius: var(--ci-3d-animation-controls-border-radius);
+  box-shadow: var(--ci-3d-animation-controls-shadow);
+  z-index: 5;
+}
+
+.ci-3d-animation-controls button {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  border-radius: 4px;
+  transition: background var(--ci-3d-transition-duration) var(--ci-3d-transition-timing);
+}
+
+.ci-3d-animation-controls button:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.ci-3d-animation-controls button svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* === Toolbar (bottom bar) === */
+.ci-3d-toolbar {
+  position: absolute;
+  bottom: 12px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  overflow: hidden;
+  background: var(--ci-3d-controls-bg);
+  border-radius: var(--ci-3d-controls-border-radius);
+  box-shadow: var(--ci-3d-controls-shadow);
+  z-index: 5;
+}
+
+.ci-3d-toolbar[data-position="bottom-center"] {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.ci-3d-toolbar[data-position="bottom-left"] {
+  left: 12px;
+}
+
+.ci-3d-toolbar[data-position="bottom-right"] {
+  right: 12px;
+}
+
+.ci-3d-toolbar-btn {
+  width: var(--ci-3d-controls-size);
+  height: var(--ci-3d-controls-size);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--ci-3d-controls-color);
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: background var(--ci-3d-transition-duration) var(--ci-3d-transition-timing);
+}
+
+.ci-3d-toolbar-btn:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.ci-3d-toolbar-btn.ci-3d-toolbar-active {
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.ci-3d-toolbar-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.ci-3d-toolbar-separator {
+  width: 1px;
+  height: 20px;
+  margin: 0 4px;
+  background: rgba(0, 0, 0, 0.15);
+  flex-shrink: 0;
+}
+
+.ci-3d-animation-select {
+  background: transparent;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 12px;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* === Dark Theme === */
+.ci-3d-theme-dark {
+  --ci-3d-container-bg: #1a1a1a;
+  --ci-3d-progress-bar-bg: rgba(255, 255, 255, 0.1);
+  --ci-3d-progress-bar-fill: #4fc3f7;
+  --ci-3d-loading-bg: rgba(26, 26, 26, 0.9);
+  --ci-3d-loading-color: #f0f0f0;
+  --ci-3d-loading-spinner-color: #4fc3f7;
+  --ci-3d-error-bg: rgba(26, 26, 26, 0.95);
+  --ci-3d-error-color: #ff6b6b;
+  --ci-3d-error-retry-bg: #4fc3f7;
+  --ci-3d-controls-bg: rgba(30, 30, 30, 0.9);
+  --ci-3d-controls-color: #f0f0f0;
+  --ci-3d-animation-controls-bg: rgba(30, 30, 30, 0.9);
+  --ci-3d-animation-controls-color: #f0f0f0;
+}
+
+.ci-3d-theme-dark .ci-3d-toolbar-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.ci-3d-theme-dark .ci-3d-toolbar-btn.ci-3d-toolbar-active {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.ci-3d-theme-dark .ci-3d-toolbar-separator {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* === Scroll Hint === */
+.ci-3d-scroll-hint {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  padding: 8px 16px;
+  border-radius: 20px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  font-size: 13px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1;
+  white-space: nowrap;
+  z-index: 100;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 300ms ease, transform 300ms ease;
+}
+
+.ci-3d-scroll-hint--visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* === Fullscreen === */
+.ci-3d-container--fullscreen {
+  width: 100vw !important;
+  height: 100vh !important;
+  border-radius: 0 !important;
+  background: #ffffff;
+}
+
+.ci-3d-theme-dark.ci-3d-container--fullscreen {
+  background: #1a1a1a;
+}
+
+/* === Focus === */
+.ci-3d-container:focus-visible {
+  outline: 2px solid #0058a3;
+  outline-offset: 2px;
+}
+
+.ci-3d-controls button:focus-visible,
+.ci-3d-toolbar-btn:focus-visible,
+.ci-3d-animation-controls button:focus-visible,
+.ci-3d-error-retry:focus-visible {
+  outline: 2px solid #0058a3;
+  outline-offset: 2px;
+}
+
+/* === Reduced Motion === */
+@media (prefers-reduced-motion: reduce) {
+  .ci-3d-loading-spinner,
+  .ci-3d-progress-bar-fill,
+  .ci-3d-controls button {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
+  }
+}

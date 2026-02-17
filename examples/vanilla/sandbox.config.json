@@ -1,0 +1,5 @@
+{
+  "template": "vanilla",
+  "infiniteLoopProtection": true,
+  "hardReloadOnChange": false
+}
