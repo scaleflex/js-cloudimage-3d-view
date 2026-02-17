@@ -65,8 +65,8 @@ npm install js-cloudimage-3d-view three
 ### CDN
 
 ```html
-<script src="https://unpkg.com/three/build/three.module.js"></script>
-<script src="https://unpkg.com/js-cloudimage-3d-view"></script>
+<script src="https://unpkg.com/three/build/three.min.js"></script>
+<script src="https://scaleflex.cloudimg.io/v7/plugins/js-cloudimage-3d-view/1.0.0/js-cloudimage-3d-view.min.js?vh=59c621&func=proxy"></script>
 ```
 
 ## Quick Start
