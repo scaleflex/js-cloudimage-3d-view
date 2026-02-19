@@ -25,6 +25,7 @@ export default defineConfig({
       external: [
         'three',
         /^three\/.*/,
+        'web-ifc',
         'react',
         'react-dom',
         'react/jsx-runtime',

@@ -65,6 +65,7 @@ export interface CI3DViewConfig {
   pixelRatio?: number;
   antialias?: boolean;
   scrollToZoom?: boolean;
+  ifcWasmPath?: string;
   onLoadStart?: () => void;
   onProgress?: (progress: number) => void;
   onLoad?: (instance: CI3DViewInstance) => void;
@@ -111,6 +112,7 @@ export interface LoaderOptions {
   mtlUrl?: string;
   draco?: boolean;
   dracoDecoderPath?: string;
+  ifcWasmPath?: string;
 }
 
 export interface LoadResult {

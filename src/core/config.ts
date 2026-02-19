@@ -111,6 +111,7 @@ const DATA_ATTR_MAP: Record<string, { key: string; coerce: (v: string) => unknow
   'pixel-ratio':            { key: 'pixelRatio',           coerce: toNumber },
   'antialias':              { key: 'antialias',            coerce: toBool },
   'scroll-to-zoom':         { key: 'scrollToZoom',         coerce: toBool },
+  'ifc-wasm-path':           { key: 'ifcWasmPath',           coerce: String },
   'lighting':               { key: 'lighting',             coerce: JSON.parse },
 };
 

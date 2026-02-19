@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { detectFormat, getLoader } from '../src/loaders/loader-registry';
 
 // Mock the Three.js addon loaders
@@ -50,6 +50,52 @@ vi.mock('three/addons/loaders/STLLoader.js', () => ({
   })),
 }));
 
+vi.mock('web-ifc', () => {
+  const mockVertexData = new Float32Array([
+    // vertex 0: pos(0,0,0) normal(0,0,1)
+    0, 0, 0, 0, 0, 1,
+    // vertex 1: pos(1,0,0) normal(0,0,1)
+    1, 0, 0, 0, 0, 1,
+    // vertex 2: pos(0,1,0) normal(0,0,1)
+    0, 1, 0, 0, 0, 1,
+  ]);
+  const mockIndexData = new Uint32Array([0, 1, 2]);
+  const mockTransform = new Array(16).fill(0);
+  // Identity matrix
+  mockTransform[0] = 1; mockTransform[5] = 1; mockTransform[10] = 1; mockTransform[15] = 1;
+
+  return {
+    IfcAPI: vi.fn().mockImplementation(() => ({
+      SetWasmPath: vi.fn(),
+      Init: vi.fn().mockResolvedValue(undefined),
+      OpenModel: vi.fn().mockReturnValue(0),
+      StreamAllMeshes: vi.fn((modelID: number, cb: (mesh: any) => void) => {
+        cb({
+          geometries: {
+            size: () => 1,
+            get: (i: number) => ({
+              geometryExpressID: 1,
+              color: { x: 0.8, y: 0.2, z: 0.2, w: 1.0 },
+              flatTransformation: mockTransform,
+            }),
+          },
+          delete: vi.fn(),
+        });
+      }),
+      GetGeometry: vi.fn().mockReturnValue({
+        GetVertexData: vi.fn().mockReturnValue(0),
+        GetVertexDataSize: vi.fn().mockReturnValue(mockVertexData.length),
+        GetIndexData: vi.fn().mockReturnValue(0),
+        GetIndexDataSize: vi.fn().mockReturnValue(mockIndexData.length),
+        delete: vi.fn(),
+      }),
+      GetVertexArray: vi.fn().mockReturnValue(mockVertexData),
+      GetIndexArray: vi.fn().mockReturnValue(mockIndexData),
+      CloseModel: vi.fn(),
+    })),
+  };
+});
+
 vi.mock('three/addons/loaders/FBXLoader.js', () => ({
   FBXLoader: vi.fn().mockImplementation(() => ({
     load: vi.fn((url, onLoad) => {
@@ -98,6 +144,10 @@ describe('detectFormat', () => {
     expect(detectFormat('character.fbx')).toBe('.fbx');
   });
 
+  it('detects .ifc extension', () => {
+    expect(detectFormat('building.ifc')).toBe('.ifc');
+  });
+
   it('is case-insensitive', () => {
     expect(detectFormat('model.GLB')).toBe('.glb');
   });
@@ -138,6 +188,12 @@ describe('getLoader', () => {
     const loader = await getLoader('character.fbx');
     expect(loader).toBeTruthy();
     expect(loader!.extensions).toContain('.fbx');
+  });
+
+  it('returns IFC loader for .ifc', async () => {
+    const loader = await getLoader('building.ifc');
+    expect(loader).toBeTruthy();
+    expect(loader!.extensions).toContain('.ifc');
   });
 
   it('returns null for unsupported extension', async () => {
@@ -194,5 +250,59 @@ describe('FBXFormatLoader', () => {
     expect(result.model).toBeTruthy();
     expect(result.animations).toHaveLength(1);
     expect(result.animations[0].name).toBe('Idle');
+  });
+});
+
+describe('IFCFormatLoader', () => {
+  const mockArrayBuffer = new ArrayBuffer(8);
+  let originalFetch: typeof globalThis.fetch;
+
+  beforeEach(() => {
+    originalFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: () => null },
+      body: null,
+      arrayBuffer: () => Promise.resolve(mockArrayBuffer),
+    });
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  it('loads an IFC file and returns a Group with no animations', async () => {
+    const loader = (await getLoader('building.ifc'))!;
+    const result = await loader.load('building.ifc', {});
+
+    expect(result.model).toBeTruthy();
+    expect(result.model.isGroup).toBe(true);
+    expect(result.model.children.length).toBeGreaterThan(0);
+    expect(result.animations).toHaveLength(0);
+  });
+
+  it('calls CloseModel to free WASM memory', async () => {
+    const { IfcAPI } = await import('web-ifc');
+    const mockedCtor = vi.mocked(IfcAPI);
+    const callsBefore = mockedCtor.mock.results.length;
+
+    const loader = (await getLoader('building.ifc'))!;
+    await loader.load('building.ifc', {});
+
+    const instance = mockedCtor.mock.results[callsBefore].value;
+    expect(instance.CloseModel).toHaveBeenCalledWith(0);
+  });
+
+  it('calls delete() on geometry objects', async () => {
+    const { IfcAPI } = await import('web-ifc');
+    const mockedCtor = vi.mocked(IfcAPI);
+    const callsBefore = mockedCtor.mock.results.length;
+
+    const loader = (await getLoader('building.ifc'))!;
+    await loader.load('building.ifc', {});
+
+    const instance = mockedCtor.mock.results[callsBefore].value;
+    const geom = instance.GetGeometry.mock.results[0].value;
+    expect(geom.delete).toHaveBeenCalled();
   });
 });

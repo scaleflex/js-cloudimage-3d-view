@@ -716,6 +716,7 @@ export class CI3DView implements CI3DViewInstance {
           mtlUrl: mtlSrc,
           draco: this.config.draco,
           dracoDecoderPath: this.config.dracoDecoderPath,
+          ifcWasmPath: this.config.ifcWasmPath,
         },
         (progress) => {
           if (generation !== this.loadGeneration) return;

@@ -16,7 +16,7 @@ export default defineConfig({
       entry: resolve(__dirname, '../src/index.ts'),
     },
     rollupOptions: {
-      external: ['three', /^three\/.*/],
+      external: ['three', /^three\/.*/, 'web-ifc'],
       output: [
         {
           format: 'es',
@@ -38,6 +38,7 @@ export default defineConfig({
           exports: 'named',
           globals: (id: string) => {
             if (id === 'three' || id.startsWith('three/')) return 'THREE';
+            if (id === 'web-ifc') return 'WebIFC';
             return id;
           },
         },

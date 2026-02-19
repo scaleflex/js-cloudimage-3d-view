@@ -169,7 +169,7 @@ const viewer = new CI3DView('#my-container', {
       <div class="demo-section-header">
         <div class="demo-section-label">Formats</div>
         <h2>Format Support</h2>
-        <p>Automatically detects and loads OBJ, STL, FBX, GLB/glTF, 3DS, and AMF formats.</p>
+        <p>Automatically detects and loads OBJ, STL, FBX, GLB/glTF, 3DS, AMF, and IFC formats.</p>
       </div>
       <div class="grid grid--3">
         <div class="viewer-card">
@@ -299,6 +299,27 @@ const viewer = new CI3DView('#my-container', {
             </div>
           </div>
           <p class="viewer-card__desc">Additive Manufacturing File format for 3D printing with material and color support.</p>
+        </div>
+        <div class="viewer-card">
+          <h3 class="viewer-card__title">IFC</h3>
+          <div
+            class="viewer-card__viewer"
+            data-ci-3d-lazy-src="https://raw.githubusercontent.com/youshengCode/IfcSampleFiles/main/Ifc4_SampleHouse.ifc"
+            data-ci-3d-lazy-shadows="true"
+            data-ci-3d-lazy-screenshot-button="true"
+            data-ci-3d-lazy-background-toggle-button="true"
+            data-ci-3d-lazy-alt="IFC format building model"
+          >
+            <div class="viewer-placeholder" data-preview="./previews/preview-ifc.png">
+              <div class="viewer-placeholder__scrim">
+                <div class="viewer-placeholder__content">
+                  <svg class="viewer-placeholder__icon" viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg"><ellipse cx="48" cy="52" rx="38" ry="12" stroke="currentColor" stroke-width="1" stroke-dasharray="3 2.5" opacity="0.25"/><path d="M48 22L74 37L48 52L22 37Z" fill="currentColor" fill-opacity="0.07" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M22 37L48 52V76L22 61Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M48 52L74 37V61L48 76Z" fill="currentColor" fill-opacity="0.18" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><polyline points="82 48 86 40 90 47" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.4"/></svg>
+                  <span class="viewer-placeholder__text">View</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p class="viewer-card__desc">Industry Foundation Classes (IFC) for BIM — architecture and construction models.</p>
         </div>
       </div>
     </div>

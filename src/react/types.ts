@@ -47,6 +47,7 @@ export interface CI3DViewerProps {
   cameraTarget?: [number, number, number];
   pixelRatio?: number;
   antialias?: boolean;
+  ifcWasmPath?: string;
   onLoadStart?: () => void;
   onProgress?: (progress: number) => void;
   onLoad?: (instance: CI3DViewInstance) => void;

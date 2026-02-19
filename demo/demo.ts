@@ -408,6 +408,7 @@ document.querySelectorAll('.demo-copy-btn').forEach((btn) => {
 //     { name: 'fbx', src: 'https://fbmjmuoeb.filerobot.com/3D%20Models/Samba%20Dancing.fbx?vh=4ad183&func=proxy', options: { shadows: true } },
 //     { name: '3ds', src: 'https://fbmjmuoeb.filerobot.com/3D%20Models/House.3DS?vh=148188&func=proxy', options: { shadows: true } },
 //     { name: 'amf', src: 'https://raw.githubusercontent.com/jscad/sample-files/master/amf/Rook.amf', options: { shadows: true } },
+//     { name: 'ifc', src: 'https://raw.githubusercontent.com/youshengCode/IfcSampleFiles/main/Ifc4_SampleHouse.ifc', options: { shadows: true } },
 //     { name: 'lighting', src: 'https://fbmjmuoeb.filerobot.com/3D%20Models/colored.stl?vh=0975df&func=proxy', options: { shadows: true, toneMapping: 'aces' as const } },
 //     { name: 'animation', src: 'https://fbmjmuoeb.filerobot.com/3D%20Models/Samba%20Dancing.fbx?vh=4ad183&func=proxy', options: { shadows: true } },
 //     { name: 'configurator', src: 'https://fbmjmuoeb.filerobot.com/3D%20Models/Turing-Borwo.stl?vh=828731&func=proxy', options: { shadows: true } },

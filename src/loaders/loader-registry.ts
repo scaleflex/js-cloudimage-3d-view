@@ -9,6 +9,7 @@ const loaderImports: Record<string, () => Promise<FormatLoader>> = {
   '.fbx':  () => import('./fbx-loader').then((m) => new m.FBXFormatLoader()),
   '.3ds':  () => import('./tds-loader').then((m) => new m.TDSFormatLoader()),
   '.amf':  () => import('./amf-loader').then((m) => new m.AMFFormatLoader()),
+  '.ifc':  () => import('./ifc-loader').then((m) => new m.IFCFormatLoader()),
 };
 
 /** Cache of already-loaded loader instances (keyed by extension). */
@@ -29,7 +30,7 @@ export function detectFormat(url: string): string {
   const ext = filename.substring(lastDot).toLowerCase();
 
   // Only return known 3D format extensions
-  const knownExtensions = ['.glb', '.gltf', '.obj', '.fbx', '.stl', '.3ds', '.amf'];
+  const knownExtensions = ['.glb', '.gltf', '.obj', '.fbx', '.stl', '.3ds', '.amf', '.ifc'];
   return knownExtensions.includes(ext) ? ext : '';
 }
 
