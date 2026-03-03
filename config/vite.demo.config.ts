@@ -7,7 +7,7 @@ export default defineConfig({
   root: resolve(__dirname, '../demo'),
   build: {
     outDir: resolve(__dirname, '../dist-demo'),
-    emptyDir: true,
+    emptyOutDir: true,
   },
   plugins: [
     {

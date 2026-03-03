@@ -8,8 +8,8 @@ export default defineConfig({
     react(),
     dts({
       include: ['src/react/**/*.ts', 'src/react/**/*.tsx', 'src/core/types.ts'],
-      rollupTypes: true,
       tsconfigPath: resolve(__dirname, '../tsconfig.build.json'),
+      outDir: resolve(__dirname, '../dist'),
     }),
   ],
   build: {
@@ -34,7 +34,7 @@ export default defineConfig({
     },
     sourcemap: true,
     outDir: resolve(__dirname, '../dist/react'),
-    emptyDir: false,
+    emptyOutDir: false,
   },
   resolve: {
     alias: {

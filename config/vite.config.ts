@@ -47,7 +47,7 @@ export default defineConfig({
     sourcemap: true,
     minify: 'esbuild',
     outDir: resolve(__dirname, '../dist'),
-    emptyDir: false,
+    emptyOutDir: false,
   },
   resolve: {
     alias: {

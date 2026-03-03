@@ -21,7 +21,7 @@ export class IFCFormatLoader implements FormatLoader {
     options: LoaderOptions,
     onProgress?: (progress: number) => void,
   ): Promise<LoadResult> {
-    const { IfcAPI } = await import('web-ifc');
+    const { IfcAPI } = await import(/* webpackIgnore: true */ 'web-ifc');
 
     const ifcApi = new IfcAPI();
     ifcApi.SetWasmPath(options.ifcWasmPath || DEFAULT_WASM_PATH);

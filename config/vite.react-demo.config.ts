@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [react()],
   build: {
     outDir: resolve(__dirname, '../dist-react-demo'),
-    emptyDir: true,
+    emptyOutDir: true,
   },
   resolve: {
     alias: {
