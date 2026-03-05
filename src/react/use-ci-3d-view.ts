@@ -19,8 +19,19 @@ export function useCI3DView(options: UseCI3DViewOptions): UseCI3DViewReturn {
     import('../core/ci-3d-view').then(({ CI3DView }) => {
       if (destroyed || !containerRef.current) return;
 
-      instance.current = new CI3DView(containerRef.current, optionsRef.current);
-      setReady(true);
+      const init = () => {
+        if (destroyed || !containerRef.current) return;
+        instance.current = new CI3DView(containerRef.current, optionsRef.current);
+        setReady(true);
+      };
+
+      // Defer initialization if the element is not yet connected to the DOM
+      // (e.g. inside a Dialog portal that hasn't mounted)
+      if (containerRef.current.isConnected) {
+        init();
+      } else {
+        requestAnimationFrame(init);
+      }
     });
 
     return () => {
