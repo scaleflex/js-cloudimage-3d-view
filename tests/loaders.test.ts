@@ -101,7 +101,7 @@ vi.mock('three/addons/loaders/FBXLoader.js', () => ({
     load: vi.fn(async (url, onLoad) => {
       const { Group } = await import('three');
       const group = new Group();
-      group.animations = [{ name: 'Idle' }];
+      group.animations = [{ name: 'Idle' } as unknown as import('three').AnimationClip];
       onLoad(group);
     }),
   })),
