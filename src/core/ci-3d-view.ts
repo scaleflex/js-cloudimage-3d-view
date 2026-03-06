@@ -14,7 +14,7 @@ import {
 } from 'three';
 import type { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import type { CI3DViewConfig, CI3DViewInstance } from './types';
-import { DEFAULT_CONFIG, parseDataAttributes, mergeConfig, validateConfig } from './config';
+import { parseDataAttributes, mergeConfig, validateConfig } from './config';
 import { createRenderer, handleResize, getToneMappingConstant } from './renderer';
 import { createScene, createCamera } from './scene';
 import { getElement, createElement, addClass, removeClass, injectStyles, removeStyles } from '../utils/dom';

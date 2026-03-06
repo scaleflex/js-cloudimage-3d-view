@@ -41,16 +41,16 @@ export function useCI3DView(options: UseCI3DViewOptions): UseCI3DViewReturn {
       setReady(false);
     };
     // Re-init when src changes
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [options.src]);
 
   // Forward prop changes to instance.update() without full re-init
   useEffect(() => {
     if (!instance.current) return;
 
-    const { src, className, style, ...updatableProps } = optionsRef.current as any;
+    const { src: _src, className: _cn, style: _st, ...updatableProps } = optionsRef.current as any;
     instance.current.update(updatableProps);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [
     options.autoRotate,
     options.autoRotateSpeed,

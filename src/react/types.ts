@@ -87,7 +87,7 @@ export interface CI3DViewerRef {
   getElements(): ReturnType<CI3DViewInstance['getElements']> | null;
 }
 
-export interface UseCI3DViewOptions extends Omit<CI3DViewerProps, 'className' | 'style'> {}
+export type UseCI3DViewOptions = Omit<CI3DViewerProps, 'className' | 'style'>;
 
 export interface UseCI3DViewReturn {
   containerRef: React.RefObject<HTMLDivElement | null>;

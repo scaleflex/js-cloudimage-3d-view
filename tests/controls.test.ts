@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { PerspectiveCamera, Sphere, Vector3 } from 'three';
 import { setupOrbitControls, updateControlsConstraints } from '../src/controls/orbit-controls';
 import { AutoRotateController } from '../src/controls/auto-rotate';
@@ -6,7 +6,7 @@ import { degreesToRadians } from '../src/utils/math';
 
 // Mock OrbitControls since it requires a real DOM renderer
 vi.mock('three/addons/controls/OrbitControls.js', () => {
-  const listeners: Record<string, Function[]> = {};
+  const listeners: Record<string, ((...args: any[]) => void)[]> = {};
   return {
     OrbitControls: vi.fn().mockImplementation(() => ({
       enableDamping: false,
@@ -25,11 +25,11 @@ vi.mock('three/addons/controls/OrbitControls.js', () => {
       dispose: vi.fn(),
       rotateLeft: vi.fn(),
       rotateUp: vi.fn(),
-      addEventListener: vi.fn((event: string, fn: Function) => {
+      addEventListener: vi.fn((event: string, fn: (...args: any[]) => void) => {
         if (!listeners[event]) listeners[event] = [];
         listeners[event].push(fn);
       }),
-      removeEventListener: vi.fn((event: string, fn: Function) => {
+      removeEventListener: vi.fn((event: string, fn: (...args: any[]) => void) => {
         if (listeners[event]) {
           listeners[event] = listeners[event].filter((f) => f !== fn);
         }

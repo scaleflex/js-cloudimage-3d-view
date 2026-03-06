@@ -30,7 +30,7 @@ export const CI3DViewer = forwardRef<CI3DViewerRef, CI3DViewerProps>(
         getThreeObjects: () => instance.current?.getThreeObjects() ?? null,
         getElements: () => instance.current?.getElements() ?? null,
       }),
-      // eslint-disable-next-line react-hooks/exhaustive-deps
+
       [],
     );
 

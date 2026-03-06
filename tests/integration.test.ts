@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { CI3DView } from '../src/core/ci-3d-view';
 
 // Mock OrbitControls
-vi.mock('three/addons/controls/OrbitControls.js', () => {
-  const { Vector3 } = require('three');
+vi.mock('three/addons/controls/OrbitControls.js', async () => {
+  const { Vector3 } = await import('three');
   return {
     OrbitControls: vi.fn().mockImplementation(() => ({
       enableDamping: false,
@@ -29,15 +29,17 @@ vi.mock('three/addons/controls/OrbitControls.js', () => {
 });
 
 // Mock GLTF loader
-vi.mock('three/addons/loaders/GLTFLoader.js', () => ({
-  GLTFLoader: vi.fn().mockImplementation(() => ({
-    load: vi.fn((url, onLoad) => {
-      const { Group } = require('three');
-      onLoad({ scene: new Group(), animations: [] });
-    }),
-    setDRACOLoader: vi.fn(),
-  })),
-}));
+vi.mock('three/addons/loaders/GLTFLoader.js', async () => {
+  const { Group } = await import('three');
+  return {
+    GLTFLoader: vi.fn().mockImplementation(() => ({
+      load: vi.fn((url, onLoad) => {
+        onLoad({ scene: new Group(), animations: [] });
+      }),
+      setDRACOLoader: vi.fn(),
+    })),
+  };
+});
 
 vi.mock('three/addons/loaders/DRACOLoader.js', () => ({
   DRACOLoader: vi.fn().mockImplementation(() => ({

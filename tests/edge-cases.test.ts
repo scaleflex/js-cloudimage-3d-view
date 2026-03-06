@@ -4,8 +4,8 @@ import { validateConfig, DEFAULT_CONFIG } from '../src/core/config';
 import { detectFormat, getLoader } from '../src/loaders/loader-registry';
 
 // Mocks
-vi.mock('three/addons/controls/OrbitControls.js', () => {
-  const { Vector3 } = require('three');
+vi.mock('three/addons/controls/OrbitControls.js', async () => {
+  const { Vector3 } = await import('three');
   return {
     OrbitControls: vi.fn().mockImplementation(() => ({
       enableDamping: false,
@@ -28,19 +28,21 @@ vi.mock('three/addons/controls/OrbitControls.js', () => {
   };
 });
 
-vi.mock('three/addons/loaders/GLTFLoader.js', () => ({
-  GLTFLoader: vi.fn().mockImplementation(() => ({
-    load: vi.fn((url, onLoad, _onProgress, onError) => {
-      if (url.includes('fail')) {
-        onError(new Error('Load failed'));
-      } else {
-        const { Group } = require('three');
-        onLoad({ scene: new Group(), animations: [] });
-      }
-    }),
-    setDRACOLoader: vi.fn(),
-  })),
-}));
+vi.mock('three/addons/loaders/GLTFLoader.js', async () => {
+  const { Group } = await import('three');
+  return {
+    GLTFLoader: vi.fn().mockImplementation(() => ({
+      load: vi.fn((url, onLoad, _onProgress, onError) => {
+        if (url.includes('fail')) {
+          onError(new Error('Load failed'));
+        } else {
+          onLoad({ scene: new Group(), animations: [] });
+        }
+      }),
+      setDRACOLoader: vi.fn(),
+    })),
+  };
+});
 
 vi.mock('three/addons/loaders/DRACOLoader.js', () => ({
   DRACOLoader: vi.fn().mockImplementation(() => ({

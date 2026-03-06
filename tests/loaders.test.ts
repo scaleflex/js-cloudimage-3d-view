@@ -4,7 +4,7 @@ import { detectFormat, getLoader } from '../src/loaders/loader-registry';
 // Mock the Three.js addon loaders
 vi.mock('three/addons/loaders/GLTFLoader.js', () => ({
   GLTFLoader: vi.fn().mockImplementation(() => ({
-    load: vi.fn((url, onLoad, onProgress, onError) => {
+    load: vi.fn((url, onLoad, _onProgress, _onError) => {
       onLoad({ scene: { isGroup: true }, animations: [{ name: 'Walk' }] });
     }),
     setDRACOLoader: vi.fn(),
@@ -40,8 +40,8 @@ vi.mock('three/addons/loaders/MTLLoader.js', () => ({
 
 vi.mock('three/addons/loaders/STLLoader.js', () => ({
   STLLoader: vi.fn().mockImplementation(() => ({
-    load: vi.fn((url, onLoad) => {
-      const { BufferGeometry, Float32BufferAttribute } = require('three');
+    load: vi.fn(async (url, onLoad) => {
+      const { BufferGeometry, Float32BufferAttribute } = await import('three');
       const geom = new BufferGeometry();
       // Provide position data so mergeVertices can operate
       geom.setAttribute('position', new Float32BufferAttribute([0, 0, 0, 1, 0, 0, 0, 1, 0], 3));
@@ -69,11 +69,11 @@ vi.mock('web-ifc', () => {
       SetWasmPath: vi.fn(),
       Init: vi.fn().mockResolvedValue(undefined),
       OpenModel: vi.fn().mockReturnValue(0),
-      StreamAllMeshes: vi.fn((modelID: number, cb: (mesh: any) => void) => {
+      StreamAllMeshes: vi.fn((_modelID: number, cb: (mesh: any) => void) => {
         cb({
           geometries: {
             size: () => 1,
-            get: (i: number) => ({
+            get: (_i: number) => ({
               geometryExpressID: 1,
               color: { x: 0.8, y: 0.2, z: 0.2, w: 1.0 },
               flatTransformation: mockTransform,
@@ -98,8 +98,8 @@ vi.mock('web-ifc', () => {
 
 vi.mock('three/addons/loaders/FBXLoader.js', () => ({
   FBXLoader: vi.fn().mockImplementation(() => ({
-    load: vi.fn((url, onLoad) => {
-      const { Group } = require('three');
+    load: vi.fn(async (url, onLoad) => {
+      const { Group } = await import('three');
       const group = new Group();
       group.animations = [{ name: 'Idle' }];
       onLoad(group);

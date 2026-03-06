@@ -93,7 +93,6 @@ describe('KeyboardHandler', () => {
   it('zooms in on + key', () => {
     handler = createHandler();
     container.focus();
-    const initialZ = camera.position.z;
     pressKey('+');
 
     // Camera should have moved closer

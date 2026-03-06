@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { AnimationClip, NumberKeyframeTrack, Object3D } from 'three';
 import { AnimationMixerWrapper } from '../src/animation/animation-mixer';
 

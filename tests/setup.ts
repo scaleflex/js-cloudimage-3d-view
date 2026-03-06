@@ -15,7 +15,7 @@ globalThis.ResizeObserver = MockResizeObserver as any;
 
 // Mock requestAnimationFrame / cancelAnimationFrame
 let rafId = 0;
-globalThis.requestAnimationFrame = vi.fn((cb: FrameRequestCallback) => {
+globalThis.requestAnimationFrame = vi.fn((_cb: FrameRequestCallback) => {
   return ++rafId;
 }) as any;
 globalThis.cancelAnimationFrame = vi.fn() as any;

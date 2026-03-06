@@ -74,7 +74,7 @@ describe('CI3DViewer component', () => {
     render(<CI3DViewer ref={ref} src="model.glb" />);
 
     // Wait for the dynamic import to resolve
-    await vi.dynamicImportSettled?.() ?? new Promise((r) => setTimeout(r, 10));
+    await (vi.dynamicImportSettled?.() ?? new Promise((r) => setTimeout(r, 10)));
 
     expect(ref.current).toBeTruthy();
     expect(typeof ref.current!.resetCamera).toBe('function');
