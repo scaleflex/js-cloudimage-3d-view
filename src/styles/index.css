@@ -369,7 +369,7 @@
 /* === Scroll Hint === */
 .ci-3d-scroll-hint {
   position: absolute;
-  bottom: 16px;
+  bottom: 60px;
   left: 50%;
   transform: translateX(-50%) translateY(4px);
   padding: 8px 16px;
