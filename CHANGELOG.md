@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.0] - 2026-03-06
+
+### Added
+- `autoLoad` option to defer Three.js initialization until user click
+- Click-to-activate overlay with optional `thumbnail` preview image
+- `data-ci-3d-auto-load` and `data-ci-3d-thumbnail` data attributes
+- Keyboard-accessible overlay button with `:focus-visible` style
+- Programmatic `loadModel()` auto-initializes when `autoLoad` is false
+
+### Fixed
+- Public API methods no longer crash when called before initialization
+- `getThreeObjects()` returns `null` instead of `undefined` for uninitialized fields
+- `validateConfig` no longer warns about missing `src` when `autoLoad` is false
+
 ## [1.0.0] - 2025-02-17
 
 ### Added
