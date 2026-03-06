@@ -72,6 +72,10 @@ export class CI3DView implements CI3DViewInstance {
   private lastCameraPos = new Vector3();
   private lastCameraTarget = new Vector3();
 
+  // Click-to-activate overlay
+  private activateOverlay: HTMLElement | null = null;
+  private initialized = false;
+
   // Scroll hint
   private scrollHint: HTMLElement | null = null;
   private scrollHintTimer: ReturnType<typeof setTimeout> | null = null;
@@ -104,22 +108,11 @@ export class CI3DView implements CI3DViewInstance {
     // Build DOM
     this.setupDOM();
 
-    // Setup Three.js
-    this.setupThreeJS();
-
-    // Setup lighting
-    this.setupLighting();
-
-    // Start animation loop
-    this.startLoop();
-
-    // Setup resize handling
-    this.resizeObserver = handleResize(this.renderer, this.camera, this.container);
-
-    // Load model if src provided
-    if (this.config.src) {
-      this.config.onLoadStart?.();
-      this.loadModelInternal(this.config.src, this.config.mtlSrc);
+    // If autoLoad is false, show click-to-activate overlay instead of initializing
+    if (this.config.autoLoad === false) {
+      this.showActivateOverlay();
+    } else {
+      this.initThreeJS();
     }
   }
 
@@ -140,10 +133,10 @@ export class CI3DView implements CI3DViewInstance {
 
   getThreeObjects() {
     return {
-      scene: this.scene,
-      camera: this.camera,
-      renderer: this.renderer,
-      controls: this.controls,
+      scene: this.scene ?? null,
+      camera: this.camera ?? null,
+      renderer: this.renderer ?? null,
+      controls: this.controls ?? null,
       model: this.model,
     };
   }
@@ -157,6 +150,18 @@ export class CI3DView implements CI3DViewInstance {
 
   async loadModel(src: string, mtlSrc?: string): Promise<void> {
     if (this.destroyed) return;
+
+    // Auto-initialize if not yet initialized (e.g. autoLoad was false)
+    if (!this.initialized) {
+      this.activateOverlay?.remove();
+      this.activateOverlay = null;
+      if (this.canvas) this.canvas.style.display = '';
+      this.config.src = src;
+      if (mtlSrc) this.config.mtlSrc = mtlSrc;
+      this.initThreeJS();
+      return;
+    }
+
     // Cancel any pending camera reset animation
     this.cameraResetHandle?.cancel();
     // Dispose old model
@@ -171,19 +176,19 @@ export class CI3DView implements CI3DViewInstance {
   }
 
   setCameraPosition(x: number, y: number, z: number): void {
-    if (this.destroyed) return;
+    if (this.destroyed || !this.initialized) return;
     this.camera.position.set(x, y, z);
     this.controls.update();
   }
 
   setCameraTarget(x: number, y: number, z: number): void {
-    if (this.destroyed) return;
+    if (this.destroyed || !this.initialized) return;
     this.controls.target.set(x, y, z);
     this.controls.update();
   }
 
   resetCamera(): void {
-    if (this.destroyed) return;
+    if (this.destroyed || !this.initialized) return;
     this.cameraResetHandle?.cancel();
     this.cameraResetHandle = smoothCameraReset(
       this.camera,
@@ -208,7 +213,7 @@ export class CI3DView implements CI3DViewInstance {
   }
 
   screenshot(scale?: number): string {
-    if (this.destroyed) return '';
+    if (this.destroyed || !this.initialized) return '';
     const s = Math.max(0.1, Math.min(scale ?? this.config.screenshotScale ?? 2, 8));
     const size = this.renderer.getSize(new Vector2());
 
@@ -303,7 +308,7 @@ export class CI3DView implements CI3DViewInstance {
   }
 
   update(config: Partial<CI3DViewConfig>): void {
-    if (this.destroyed) return;
+    if (this.destroyed || !this.initialized) return;
     const oldConfig = { ...this.config };
     this.config = mergeConfig({ ...this.config, ...config });
 
@@ -429,61 +434,65 @@ export class CI3DView implements CI3DViewInstance {
     this.cameraResetHandle?.cancel();
     this.cameraResetHandle = null;
 
-    // Stop animation loop
-    if (this.animationId !== null) {
-      cancelAnimationFrame(this.animationId);
-      this.animationId = null;
+    // Only dispose Three.js resources if they were initialized
+    if (this.initialized) {
+      // Stop animation loop
+      if (this.animationId !== null) {
+        cancelAnimationFrame(this.animationId);
+        this.animationId = null;
+      }
+
+      // Dispose toolbar
+      this.toolbar?.destroy();
+
+      // Dispose auto-rotate
+      this.autoRotateController?.destroy();
+
+      // Dispose animation
+      if (this.mixer) {
+        this.mixer.stopAllAction();
+        if (this.model) this.mixer.uncacheRoot(this.model);
+      }
+
+      // Dispose model
+      this.disposeModel();
+
+      // Dispose lighting
+      if (this.lights) {
+        disposeLighting(this.lights, this.scene);
+      }
+
+      // Dispose environment
+      disposeEnvironment(this.scene);
+
+      // Dispose ground plane
+      if (this.groundPlane) {
+        disposeGroundPlane(this.groundPlane, this.scene);
+      }
+
+      // Dispose controls
+      this.controls?.dispose();
+
+      // Dispose renderer
+      this.renderer.dispose();
+
+      // Cancel throttled camera change
+      this.throttledCameraChange?.cancel();
+
+      // Disconnect resize observer
+      this.resizeObserver?.disconnect();
+
+      // Remove wheel interception
+      this.detachWheelInterception();
+      this.hideScrollHint();
     }
-
-    // Dispose toolbar
-    this.toolbar?.destroy();
-
-    // Dispose auto-rotate
-    this.autoRotateController?.destroy();
-
-    // Dispose animation
-    if (this.mixer) {
-      this.mixer.stopAllAction();
-      if (this.model) this.mixer.uncacheRoot(this.model);
-    }
-
-    // Dispose model
-    this.disposeModel();
-
-    // Dispose lighting
-    if (this.lights) {
-      disposeLighting(this.lights, this.scene);
-    }
-
-    // Dispose environment
-    disposeEnvironment(this.scene);
-
-    // Dispose ground plane
-    if (this.groundPlane) {
-      disposeGroundPlane(this.groundPlane, this.scene);
-    }
-
-    // Dispose controls
-    this.controls?.dispose();
-
-    // Dispose renderer
-    this.renderer.dispose();
-
-    // Cancel throttled camera change
-    this.throttledCameraChange?.cancel();
-
-    // Disconnect resize observer
-    this.resizeObserver?.disconnect();
-
-    // Remove wheel interception
-    this.detachWheelInterception();
-    this.hideScrollHint();
 
     // Remove fullscreen listeners
     document.removeEventListener('fullscreenchange', this.onFullscreenChange);
     document.removeEventListener('webkitfullscreenchange', this.onFullscreenChange);
 
     // Remove DOM elements
+    this.activateOverlay?.remove();
     this.scrollHint?.remove();
     this.loadingOverlay?.remove();
     this.errorOverlay?.remove();
@@ -500,6 +509,66 @@ export class CI3DView implements CI3DViewInstance {
   }
 
   // === Private Methods ===
+
+  private initThreeJS(): void {
+    if (this.initialized) return;
+    this.initialized = true;
+
+    // Setup Three.js
+    this.setupThreeJS();
+
+    // Setup lighting
+    this.setupLighting();
+
+    // Start animation loop
+    this.startLoop();
+
+    // Setup resize handling
+    this.resizeObserver = handleResize(this.renderer, this.camera, this.container);
+
+    // Load model if src provided
+    if (this.config.src) {
+      this.showLoading();
+      this.config.onLoadStart?.();
+      this.loadModelInternal(this.config.src, this.config.mtlSrc);
+    }
+  }
+
+  private showActivateOverlay(): void {
+    // Hide loading/error/canvas so they don't show behind the activate overlay
+    this.hideLoading();
+    if (this.canvas) this.canvas.style.display = 'none';
+
+    const hasThumbnail = typeof this.config.thumbnail === 'string' && this.config.thumbnail.length > 0;
+
+    this.activateOverlay = createElement('button', 'ci-3d-activate-overlay');
+    if (hasThumbnail) {
+      addClass(this.activateOverlay, 'ci-3d-activate-overlay--has-thumbnail');
+
+      const img = document.createElement('img');
+      img.className = 'ci-3d-activate-thumbnail';
+      img.src = this.config.thumbnail!;
+      img.alt = this.config.alt || '3D model';
+      this.activateOverlay.appendChild(img);
+    }
+
+    const iconCircle = createElement('span', 'ci-3d-activate-icon');
+    iconCircle.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l9 5v10l-9 5-9-5V7l9-5z"/><path d="M12 22V12"/><path d="M21 7l-9 5-9-5"/></svg>';
+    this.activateOverlay.appendChild(iconCircle);
+
+    const text = createElement('span', 'ci-3d-activate-text');
+    text.textContent = 'Click to load 3D model';
+    this.activateOverlay.appendChild(text);
+
+    this.activateOverlay.addEventListener('click', () => {
+      this.activateOverlay?.remove();
+      this.activateOverlay = null;
+      if (this.canvas) this.canvas.style.display = '';
+      this.initThreeJS();
+    }, { once: true });
+
+    this.container.appendChild(this.activateOverlay);
+  }
 
   private setupDOM(): void {
     addClass(this.container, 'ci-3d-container');

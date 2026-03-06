@@ -67,6 +67,8 @@ export interface CI3DViewConfig {
   scrollToZoom?: boolean;
   ifcWasmPath?: string;
   aspectRatio?: string;
+  autoLoad?: boolean;
+  thumbnail?: string;
   onLoadStart?: () => void;
   onProgress?: (progress: number) => void;
   onLoad?: (instance: CI3DViewInstance) => void;
@@ -80,10 +82,10 @@ export interface CI3DViewConfig {
 
 export interface CI3DViewInstance {
   getThreeObjects(): {
-    scene: Scene;
-    camera: PerspectiveCamera;
-    renderer: WebGLRenderer;
-    controls: OrbitControls;
+    scene: Scene | null;
+    camera: PerspectiveCamera | null;
+    renderer: WebGLRenderer | null;
+    controls: OrbitControls | null;
     model: Group | null;
   };
   getElements(): {

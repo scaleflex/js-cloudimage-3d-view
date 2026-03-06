@@ -4,16 +4,6 @@ import { initConfigurator, destroyConfigurator } from './configurator';
 
 // ===== Helpers =====
 
-/** Remove the placeholder overlay from a container and return true if one was found. */
-function removePlaceholder(container: HTMLElement): boolean {
-  const placeholder = container.querySelector('.viewer-placeholder');
-  if (placeholder) {
-    placeholder.remove();
-    return true;
-  }
-  return false;
-}
-
 /** Swap all `data-ci-3d-lazy-*` attributes to `data-ci-3d-*` on an element. */
 function promoteLazyAttributes(el: HTMLElement): void {
   const toRename: { old: string; new_: string; value: string }[] = [];
@@ -45,105 +35,98 @@ function disableControls(container: HTMLElement): void {
 
 // ===== Viewer Manager: only one active 3D viewer at a time =====
 
-/** Saved placeholder outerHTML for each container, captured before any viewer activates. */
-const savedPlaceholders = new Map<HTMLElement, string>();
-
 interface ViewerEntry {
-  init: () => void;
   active: boolean;
-  cleanup?: () => void;
+  /** Destroy the active viewer and recreate with autoLoad:false overlay. */
+  deactivate: () => void;
 }
 
 const registry = new Map<HTMLElement, ViewerEntry>();
 
-// Save all placeholder HTML upfront and apply preview background images.
-document.querySelectorAll<HTMLElement>('.viewer-placeholder').forEach((ph) => {
-  const container = ph.parentElement;
-  if (container) {
-    savedPlaceholders.set(container, ph.outerHTML);
-    if (ph.dataset.preview) {
-      ph.style.backgroundImage = `url(${ph.dataset.preview})`;
-    }
+/** Deactivate all viewers except the given container. */
+function deactivateOthers(except: HTMLElement): void {
+  for (const [container, entry] of registry) {
+    if (container === except || !entry.active) continue;
+    entry.deactivate();
+    entry.active = false;
   }
-});
-
-/** Register a viewer container with its initialization function. */
-function registerViewer(container: HTMLElement, init: () => void): void {
-  registry.set(container, { init, active: false });
-  const placeholder = container.querySelector('.viewer-placeholder');
-  placeholder?.addEventListener('click', () => activateViewer(container), { once: true });
-}
-
-/** Store a cleanup function that will be called when the viewer is deactivated. */
-function setCleanup(container: HTMLElement, cleanup: () => void): void {
-  const entry = registry.get(container);
-  if (entry) entry.cleanup = cleanup;
-}
-
-/** Activate a viewer, deactivating all others first. */
-function activateViewer(container: HTMLElement): void {
-  const entry = registry.get(container);
-  if (!entry || entry.active) return;
-
-  // Deactivate all other active viewers
-  for (const [otherContainer, other] of registry) {
-    if (otherContainer === container || !other.active) continue;
-    other.cleanup?.();
-    other.active = false;
-    other.cleanup = undefined;
-    restorePlaceholder(otherContainer);
-  }
-
-  // Activate this one
-  removePlaceholder(container);
-  entry.init();
-  entry.active = true;
-}
-
-/** Restore a placeholder to a container after its viewer was destroyed. */
-function restorePlaceholder(container: HTMLElement): void {
-  const html = savedPlaceholders.get(container);
-  if (!html) return;
-
-  // Clean up any leftover DOM from the destroyed viewer
-  container.replaceChildren();
-
-  container.insertAdjacentHTML('beforeend', html);
-  const ph = container.querySelector('.viewer-placeholder') as HTMLElement;
-  if (ph?.dataset.preview) {
-    ph.style.backgroundImage = `url(${ph.dataset.preview})`;
-  }
-  ph?.addEventListener('click', () => activateViewer(container), { once: true });
 }
 
 // ===== Hero Viewer =====
 const heroEl = document.getElementById('hero-viewer');
 if (heroEl) {
-  registerViewer(heroEl, () => {
-    promoteLazyAttributes(heroEl);
-    const config = parseDataAttributes(heroEl);
-    const instance = new CI3DView(heroEl, config);
-    setCleanup(heroEl, () => instance.destroy());
-  });
+  promoteLazyAttributes(heroEl);
+  const config = parseDataAttributes(heroEl);
 
-  // Auto-activate hero on page load
-  activateViewer(heroEl);
+  let heroInstance: CI3DView | null = null;
+
+  function createHeroOverlay() {
+    const overlay = new CI3DView(heroEl!, { ...config, autoLoad: false, thumbnail: './previews/preview-stl.png' });
+    // Plugin's overlay click will call initThreeJS() — that's fine for hero, it self-activates.
+    // We just need to track the state.
+    heroEl!.addEventListener('click', () => {
+      deactivateOthers(heroEl!);
+      heroEntry.active = true;
+      heroInstance = overlay; // The overlay self-activated via initThreeJS
+    }, { once: true });
+  }
+
+  const heroEntry: ViewerEntry = {
+    active: false,
+    deactivate: () => {
+      heroInstance?.destroy();
+      heroInstance = null;
+      createHeroOverlay();
+    },
+  };
+
+  registry.set(heroEl, heroEntry);
+
+  // Auto-activate hero on page load (no overlay)
+  heroEntry.active = true;
+  heroInstance = new CI3DView(heroEl, config);
 }
 
 // ===== Format Card Viewers =====
+// These use data-ci-3d-auto-load="false" + data-ci-3d-thumbnail from data attrs.
+// The plugin shows its native overlay and self-activates on click via initThreeJS().
 document.querySelectorAll<HTMLElement>('[data-ci-3d-lazy-src]').forEach((el) => {
-  if (el.id === 'hero-viewer') return; // Already registered above
+  if (el.id === 'hero-viewer') return;
 
-  registerViewer(el, () => {
-    promoteLazyAttributes(el);
-    const config = parseDataAttributes(el);
-    const instance = new CI3DView(el, config);
-    setCleanup(el, () => instance.destroy());
-  });
+  promoteLazyAttributes(el);
+  const config = parseDataAttributes(el);
+
+  let currentInstance: CI3DView | null = null;
+
+  function createOverlay() {
+    currentInstance = new CI3DView(el, { ...config, autoLoad: false });
+    // Plugin self-activates on overlay click. We track state and deactivate others.
+    el.addEventListener('click', () => {
+      deactivateOthers(el);
+      entry.active = true;
+      // currentInstance is now the active viewer (it loaded itself)
+    }, { once: true });
+  }
+
+  const entry: ViewerEntry = {
+    active: false,
+    deactivate: () => {
+      currentInstance?.destroy();
+      currentInstance = null;
+      createOverlay();
+    },
+  };
+
+  registry.set(el, entry);
+  createOverlay();
 });
 
 // ===== Lighting Demo =====
+// Lighting/Animation/Configurator use programmatic config (not data attrs).
+// We destroy the overlay instance and create a fresh one for the active viewer,
+// so the demo controls bind to the correct instance.
 let lightingInstance: CI3DView | null = null;
+let lightingOverlay: CI3DView | null = null;
 let lightingListenersAttached = false;
 const lightingContainer = document.getElementById('lighting-viewer');
 if (lightingContainer) {
@@ -153,111 +136,173 @@ if (lightingContainer) {
   const exposureVal = document.getElementById('ctrl-exposure-val');
   const themeCtrl = document.getElementById('ctrl-lighting-theme') as HTMLSelectElement;
 
-  registerViewer(lightingContainer, () => {
-    lightingInstance = new CI3DView(lightingContainer, {
-      src: 'https://fbmjmuoeb.filerobot.com/3D%20Models/colored.stl?vh=0975df&func=proxy',
-      autoRotate: true,
-      shadows: true,
-      toneMapping: 'aces',
-      screenshotButton: true,
-      alt: 'Lighting demo model',
-      onError: (err) => console.error('[Lighting]', err),
-    });
+  const lightingConfig = {
+    src: 'https://fbmjmuoeb.filerobot.com/3D%20Models/colored.stl?vh=0975df&func=proxy',
+    autoRotate: true,
+    shadows: true,
+    toneMapping: 'aces' as const,
+    screenshotButton: true,
+    alt: 'Lighting demo model',
+    thumbnail: './previews/preview-lighting.png',
+    onError: (err: Error) => console.error('[Lighting]', err),
+  };
 
-    const controlsPanel = lightingContainer.closest('.demo-panel')?.querySelector('.demo-panel__controls');
+  function createLightingOverlay() {
+    lightingOverlay = new CI3DView(lightingContainer!, { ...lightingConfig, autoLoad: false });
+    // Use capture phase + stopPropagation to intercept the click before the plugin's
+    // overlay handler fires initThreeJS() — we want to destroy and replace the instance.
+    lightingContainer!.addEventListener('click', (e) => {
+      e.stopPropagation();
+      lightingOverlay?.destroy();
+      lightingOverlay = null;
+      deactivateOthers(lightingContainer!);
+      lightingEntry.active = true;
+      activateLighting();
+    }, { once: true, capture: true });
+  }
+
+  function activateLighting() {
+    lightingInstance = new CI3DView(lightingContainer!, lightingConfig);
+    const controlsPanel = lightingContainer!.closest('.demo-panel')?.querySelector('.demo-panel__controls');
     if (controlsPanel) enableControls(controlsPanel as HTMLElement);
 
     if (!lightingListenersAttached) {
       lightingListenersAttached = true;
-
       shadowsCtrl?.addEventListener('change', () => {
         lightingInstance?.update({ shadows: shadowsCtrl.checked });
       });
-
       tonemapCtrl?.addEventListener('change', () => {
         lightingInstance?.update({ toneMapping: tonemapCtrl.value as any });
       });
-
       exposureCtrl?.addEventListener('input', () => {
         const val = parseFloat(exposureCtrl.value);
         if (exposureVal) exposureVal.textContent = val.toFixed(1);
         lightingInstance?.update({ toneMappingExposure: val });
       });
-
       themeCtrl?.addEventListener('change', () => {
         lightingInstance?.update({ theme: themeCtrl.value as any });
       });
     }
+  }
 
-    setCleanup(lightingContainer, () => {
+  const lightingEntry: ViewerEntry = {
+    active: false,
+    deactivate: () => {
       lightingInstance?.destroy();
       lightingInstance = null;
-      const controlsPanel = lightingContainer.closest('.demo-panel')?.querySelector('.demo-panel__controls');
+      const controlsPanel = lightingContainer!.closest('.demo-panel')?.querySelector('.demo-panel__controls');
       if (controlsPanel) disableControls(controlsPanel as HTMLElement);
-    });
-  });
+      createLightingOverlay();
+    },
+  };
+
+  registry.set(lightingContainer, lightingEntry);
+  createLightingOverlay();
 }
 
 // ===== Animation Demo =====
 let animInstance: CI3DView | null = null;
+let animOverlay: CI3DView | null = null;
 let animListenersAttached = false;
 const animContainer = document.getElementById('animation-viewer');
 if (animContainer) {
   const speedCtrl = document.getElementById('anim-speed') as HTMLInputElement;
   const speedVal = document.getElementById('anim-speed-val');
 
-  registerViewer(animContainer, () => {
-    animInstance = new CI3DView(animContainer, {
-      src: 'https://fbmjmuoeb.filerobot.com/3D%20Models/Samba%20Dancing.fbx?vh=4ad183&func=proxy',
-      autoPlayAnimation: true,
-      shadows: true,
-      screenshotButton: true,
-      backgroundToggleButton: true,
-      alt: 'Animated dancing character',
-      onError: (err) => console.error('[Animation]', err),
-    });
+  const animConfig = {
+    src: 'https://fbmjmuoeb.filerobot.com/3D%20Models/Samba%20Dancing.fbx?vh=4ad183&func=proxy',
+    autoPlayAnimation: true,
+    shadows: true,
+    screenshotButton: true,
+    backgroundToggleButton: true,
+    alt: 'Animated dancing character',
+    thumbnail: './previews/preview-animation.png',
+    onError: (err: Error) => console.error('[Animation]', err),
+  };
 
-    const controlsPanel = animContainer.closest('.demo-panel')?.querySelector('.demo-panel__controls');
+  function createAnimOverlay() {
+    animOverlay = new CI3DView(animContainer!, { ...animConfig, autoLoad: false });
+    animContainer!.addEventListener('click', (e) => {
+      e.stopPropagation();
+      animOverlay?.destroy();
+      animOverlay = null;
+      deactivateOthers(animContainer!);
+      animEntry.active = true;
+      activateAnimation();
+    }, { once: true, capture: true });
+  }
+
+  function activateAnimation() {
+    animInstance = new CI3DView(animContainer!, animConfig);
+    const controlsPanel = animContainer!.closest('.demo-panel')?.querySelector('.demo-panel__controls');
     if (controlsPanel) enableControls(controlsPanel as HTMLElement);
 
     if (!animListenersAttached) {
       animListenersAttached = true;
-
       document.getElementById('anim-play')?.addEventListener('click', () => {
         animInstance?.playAnimation();
       });
-
       document.getElementById('anim-pause')?.addEventListener('click', () => {
         animInstance?.pauseAnimation();
       });
-
       document.getElementById('anim-stop')?.addEventListener('click', () => {
         animInstance?.stopAnimation();
       });
-
       speedCtrl?.addEventListener('input', () => {
         const val = parseFloat(speedCtrl.value);
         if (speedVal) speedVal.textContent = `${val.toFixed(1)}x`;
         animInstance?.setAnimationSpeed(val);
       });
     }
+  }
 
-    setCleanup(animContainer, () => {
+  const animEntry: ViewerEntry = {
+    active: false,
+    deactivate: () => {
       animInstance?.destroy();
       animInstance = null;
-      const controlsPanel = animContainer.closest('.demo-panel')?.querySelector('.demo-panel__controls');
+      const controlsPanel = animContainer!.closest('.demo-panel')?.querySelector('.demo-panel__controls');
       if (controlsPanel) disableControls(controlsPanel as HTMLElement);
-    });
-  });
+      createAnimOverlay();
+    },
+  };
+
+  registry.set(animContainer, animEntry);
+  createAnimOverlay();
 }
 
 // ===== Interactive Configurator =====
+let cfgOverlay: CI3DView | null = null;
 const configuratorContainer = document.getElementById('configurator-viewer');
 if (configuratorContainer) {
-  registerViewer(configuratorContainer, () => {
-    initConfigurator(configuratorContainer);
-    setCleanup(configuratorContainer, () => destroyConfigurator());
-  });
+  const cfgOverlayConfig = {
+    src: 'https://fbmjmuoeb.filerobot.com/3D%20Models/Turing-Borwo.stl?vh=828731&func=proxy',
+    autoLoad: false as const,
+    thumbnail: './previews/preview-configurator.png',
+  };
+
+  function createCfgOverlay() {
+    cfgOverlay = new CI3DView(configuratorContainer!, cfgOverlayConfig);
+    configuratorContainer!.addEventListener('click', (e) => {
+      e.stopPropagation();
+      cfgOverlay?.destroy();
+      cfgOverlay = null;
+      deactivateOthers(configuratorContainer!);
+      cfgEntry.active = true;
+      initConfigurator(configuratorContainer!);
+    }, { once: true, capture: true });
+  }
+
+  const cfgEntry: ViewerEntry = {
+    active: false,
+    deactivate: () => {
+      destroyConfigurator();
+      createCfgOverlay();
+    },
+  };
+
+  registry.set(configuratorContainer, cfgEntry);
+  createCfgOverlay();
 }
 
 // ===== Burger Menu =====
@@ -394,86 +439,3 @@ document.querySelectorAll('.demo-copy-btn').forEach((btn) => {
     resetTimer();
   }
 }
-
-// ===== Dev-only: Preview Image Generator =====
-// Renders each model in a temporary container, screenshots it, and downloads the PNG.
-// Run once with `npm run dev`, click the button, save images to demo/previews/.
-// Uncomment when you need to regenerate previews (e.g. after adding new formats).
-//
-// if (import.meta.env.DEV) {
-//   const PREVIEW_MODELS: { name: string; src: string; options?: Partial<Parameters<typeof CI3DView.prototype.update>[0]> }[] = [
-//     { name: 'glb', src: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/DamagedHelmet/glTF-Binary/DamagedHelmet.glb', options: { shadows: true, autoRotate: false } },
-//     { name: 'obj', src: 'https://fbmjmuoeb.filerobot.com/3D%20Models/craneo.obj?vh=c8c155&func=proxy', options: { shadows: true } },
-//     { name: 'stl', src: 'https://fbmjmuoeb.filerobot.com/3D%20Models/colored.stl?vh=0975df&func=proxy', options: { shadows: true } },
-//     { name: 'fbx', src: 'https://fbmjmuoeb.filerobot.com/3D%20Models/Samba%20Dancing.fbx?vh=4ad183&func=proxy', options: { shadows: true } },
-//     { name: '3ds', src: 'https://fbmjmuoeb.filerobot.com/3D%20Models/House.3DS?vh=148188&func=proxy', options: { shadows: true } },
-//     { name: 'amf', src: 'https://raw.githubusercontent.com/jscad/sample-files/master/amf/Rook.amf', options: { shadows: true } },
-//     { name: 'ifc', src: 'https://raw.githubusercontent.com/youshengCode/IfcSampleFiles/main/Ifc4_SampleHouse.ifc', options: { shadows: true } },
-//     { name: 'lighting', src: 'https://fbmjmuoeb.filerobot.com/3D%20Models/colored.stl?vh=0975df&func=proxy', options: { shadows: true, toneMapping: 'aces' as const } },
-//     { name: 'animation', src: 'https://fbmjmuoeb.filerobot.com/3D%20Models/Samba%20Dancing.fbx?vh=4ad183&func=proxy', options: { shadows: true } },
-//     { name: 'configurator', src: 'https://fbmjmuoeb.filerobot.com/3D%20Models/Turing-Borwo.stl?vh=828731&func=proxy', options: { shadows: true } },
-//   ];
-//
-//   const btn = document.createElement('button');
-//   btn.className = 'preview-gen-btn';
-//   btn.textContent = 'Generate Previews';
-//   document.body.appendChild(btn);
-//
-//   btn.addEventListener('click', async () => {
-//     btn.disabled = true;
-//     btn.textContent = 'Generating...';
-//
-//     const tmpContainer = document.createElement('div');
-//     tmpContainer.style.cssText = 'position:fixed;top:0;left:-9999px;width:800px;height:600px;';
-//     document.body.appendChild(tmpContainer);
-//
-//     for (const model of PREVIEW_MODELS) {
-//       btn.textContent = `Rendering ${model.name}...`;
-//       tmpContainer.innerHTML = '';
-//
-//       try {
-//         const dataUrl = await new Promise<string>((resolve, reject) => {
-//           const timeout = setTimeout(() => reject(new Error(`Timeout loading ${model.name}`)), 30000);
-//
-//           new CI3DView(tmpContainer, {
-//             src: model.src,
-//             ...model.options,
-//             fullscreenButton: false,
-//             screenshotButton: false,
-//             showProgress: false,
-//             onLoad: (instance) => {
-//               clearTimeout(timeout);
-//               requestAnimationFrame(() => {
-//                 requestAnimationFrame(() => {
-//                   const url = instance.screenshot(2);
-//                   instance.destroy();
-//                   resolve(url);
-//                 });
-//               });
-//             },
-//             onError: (err) => {
-//               clearTimeout(timeout);
-//               reject(err);
-//             },
-//           });
-//         });
-//
-//         const a = document.createElement('a');
-//         a.href = dataUrl;
-//         a.download = `preview-${model.name}.png`;
-//         document.body.appendChild(a);
-//         a.click();
-//         a.remove();
-//
-//         await new Promise((r) => setTimeout(r, 500));
-//       } catch (err) {
-//         console.error(`Failed to generate preview for ${model.name}:`, err);
-//       }
-//     }
-//
-//     tmpContainer.remove();
-//     btn.textContent = 'Done! Check downloads';
-//     btn.disabled = false;
-//     setTimeout(() => { btn.textContent = 'Generate Previews'; }, 3000);
-//   });
-// }

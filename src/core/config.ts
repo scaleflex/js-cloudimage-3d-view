@@ -36,6 +36,7 @@ export const DEFAULT_CONFIG: CI3DViewConfig = {
   cameraFov: 45,
   antialias: true,
   scrollToZoom: false,
+  autoLoad: true,
 };
 
 function toBool(v: string): boolean {
@@ -113,6 +114,8 @@ const DATA_ATTR_MAP: Record<string, { key: string; coerce: (v: string) => unknow
   'scroll-to-zoom':         { key: 'scrollToZoom',         coerce: toBool },
   'ifc-wasm-path':           { key: 'ifcWasmPath',           coerce: String },
   'aspect-ratio':            { key: 'aspectRatio',           coerce: String },
+  'auto-load':               { key: 'autoLoad',              coerce: toBool },
+  'thumbnail':               { key: 'thumbnail',             coerce: String },
   'lighting':               { key: 'lighting',             coerce: JSON.parse },
 };
 
@@ -154,7 +157,7 @@ export function mergeConfig(userConfig: Partial<CI3DViewConfig>): CI3DViewConfig
 export function validateConfig(config: CI3DViewConfig): string[] {
   const errors: string[] = [];
 
-  if (!config.src) {
+  if (!config.src && config.autoLoad !== false) {
     errors.push('config.src is required');
   }
 

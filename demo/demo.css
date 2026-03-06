@@ -1008,78 +1008,6 @@ body {
   margin-bottom: 12px;
 }
 
-/* ===== Viewer Placeholder (click-to-load) ===== */
-.viewer-placeholder {
-  position: absolute;
-  inset: 0;
-  z-index: 10;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  background: var(--color-bg-alt);
-  background-size: cover;
-  background-position: center;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: filter 0.2s;
-}
-
-.viewer-placeholder:hover {
-  filter: brightness(0.97);
-}
-
-.viewer-placeholder__scrim {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-sm);
-}
-
-.viewer-placeholder__content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  width: 120px;
-  height: 120px;
-  background: rgba(255, 255, 255, 0.55);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border-radius: 50%;
-  transition: transform 0.25s ease;
-}
-
-.viewer-placeholder:hover .viewer-placeholder__content {
-  transform: scale(1.1);
-}
-
-.viewer-placeholder__icon {
-  width: 52px;
-  height: 52px;
-  color: var(--color-primary);
-  transition: transform 0.35s ease;
-  filter: drop-shadow(0 2px 8px rgba(0, 88, 163, 0.18));
-}
-
-.viewer-placeholder:hover .viewer-placeholder__icon {
-  transform: none;
-}
-
-.viewer-placeholder__text {
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--color-text-muted);
-  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
-}
-
 /* Dev-only preview generator button */
 /* Uncomment when preview generator is re-enabled
 .preview-gen-btn {
@@ -1110,7 +1038,7 @@ body {
 }
 */
 
-/* Containers that hold a placeholder need relative positioning */
+/* Containers need relative positioning for plugin overlay */
 .viewer-card__viewer,
 .demo-panel__viewer,
 .configurator__viewer,
