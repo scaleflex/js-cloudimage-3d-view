@@ -66,6 +66,7 @@ export interface CI3DViewConfig {
   antialias?: boolean;
   scrollToZoom?: boolean;
   ifcWasmPath?: string;
+  aspectRatio?: string;
   onLoadStart?: () => void;
   onProgress?: (progress: number) => void;
   onLoad?: (instance: CI3DViewInstance) => void;

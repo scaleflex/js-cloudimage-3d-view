@@ -399,6 +399,17 @@ export class CI3DView implements CI3DViewInstance {
       }
     }
 
+    // Apply aspect ratio change
+    if (config.aspectRatio !== undefined) {
+      if (config.aspectRatio) {
+        this.container.style.aspectRatio = config.aspectRatio.replace(':', ' / ');
+        this.container.style.height = 'auto';
+      } else {
+        this.container.style.aspectRatio = '';
+        this.container.style.height = '';
+      }
+    }
+
     // Reload model if src changed
     if (config.src !== undefined && config.src !== oldConfig.src) {
       this.loadModel(config.src, config.mtlSrc).catch(() => {});
@@ -479,8 +490,10 @@ export class CI3DView implements CI3DViewInstance {
     this.controlsWrapper?.remove();
     this.canvas?.remove();
 
-    // Remove container classes
+    // Remove container classes and inline styles
     removeClass(this.container, 'ci-3d-container', 'ci-3d-theme-dark');
+    this.container.style.aspectRatio = '';
+    this.container.style.height = '';
 
     // Release styles reference
     removeStyles('ci-3d-styles');
@@ -493,6 +506,12 @@ export class CI3DView implements CI3DViewInstance {
 
     if (this.config.theme === 'dark') {
       addClass(this.container, 'ci-3d-theme-dark');
+    }
+
+    // Apply aspect ratio
+    if (this.config.aspectRatio) {
+      this.container.style.aspectRatio = this.config.aspectRatio.replace(':', ' / ');
+      this.container.style.height = 'auto';
     }
 
     // Container ARIA

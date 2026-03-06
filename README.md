@@ -172,6 +172,7 @@ new CI3DView(element: HTMLElement | string, config: CI3DViewConfig)
 | `cameraTarget` | `[x, y, z]` | — | Custom camera look-at target |
 | `pixelRatio` | `number` | `2` | Max device pixel ratio |
 | `antialias` | `boolean` | `true` | Enable antialiasing |
+| `aspectRatio` | `string` | — | Container aspect ratio (e.g. `'16:9'`, `'4:3'`, `'1:1'`) |
 | `lighting` | `LightingConfig` | — | Custom lighting configuration |
 
 ### Callbacks
